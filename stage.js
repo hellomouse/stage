@@ -66,13 +66,13 @@ function enter_scene(si) {
 	});
 }
 
-function execute_action(si, depth) {
+function execute_action(si, depth, blocking = false) {
 	if (depth != action_depth)
 		return
 	action_depth++
 	output.appendChild(document.createElement("hr"))
 	stop = false
-	action_stack.push(si)
+	if (!blocking) action_stack.push(si)
 	enter_subscene(si)
 }
 
@@ -94,7 +94,12 @@ function action(i, si) {
 	while (play[++i] != '\n' && play[i]) text += play[i]
 	var a = document.createElement("a")
 	a.classList.add("action")
-	a.href = `javascript:execute_action(${si}, ${action_depth})`
+	if (!si) { // blocking action.
+		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
+		i = play.length + 1 // HACK: stop processing subscene.
+	} else {
+		a.href = `javascript:execute_action(${si}, ${action_depth})`
+	}
 	a.innerText = text
 	output.appendChild(a)
 	return i - 1
@@ -275,6 +280,11 @@ const functions = {
 		for (var a of args) out += String(get_value(a, 'any'))
 		insert_text(out)
 		return token(true)
+	},
+	"concat": (...args) => {
+		var out = ""
+		for (var a of args) out += String(get_value(a, 'any'))
+		return token(out)
 	},
 	"if": (...args) => {
 		var condition = get_value(args[0], 'any')
