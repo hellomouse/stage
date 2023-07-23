@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<script src='stage.js'></script>
+		<script>
+let editor
+let debug_vars
+let variable_track = {}
+
+function run() {
+	for (var v in variable_track)
+		variable_track[v].remove()
+	variable_track = {}
+	play = editor.value
+	parse_play()
+}
+
+functions["set"] = (...args) => {
+	var ret
+	var sym = get_token(args[0])
+	if (sym[0] == 'reference') {
+		ret = resolve_token(sym[1][0])[1][sym[1][1]] = resolve_token(args[1])
+		sym = sym[1][0]
+	} else {
+		ret = variables[get_value(sym, "symbol")] = resolve_token(args[1])
+	}
+
+	var v = sym[1]
+	var s = variables[sym[1]]
+	if (!variable_track[v]) {
+		var d = document.createElement("div")
+		d.className = "variable"
+		d.innerText = `${v}: ${humanify_token(s)}`
+		debug_vars.appendChild(d)
+		variable_track[v] = d
+	} else {
+		variable_track[v].innerText = `${v}: ${humanify_token(s)}`
+	}
+	return ret
+}
+
+window.onload = e => {
+	debug_vars = document.getElementById("variables")
+	container = document.getElementById("container")
+	output = document.getElementById("output") 
+	editor = document.getElementById("editor")
+	editor.addEventListener('keydown', function(e) {
+		if (e.key == "Tab") {
+			e.preventDefault()
+			var s = this.selectionStart;
+			var e = this.selectionEnd;
+			this.value = this.value.substring(0, s) + "\t" + this.value.substring(e);
+			this.selectionStart = this.selectionEnd = s + 1;
+		}
+	})
+}
+		</script>
+		<style>
+body {
+	margin: 40px auto;
+	max-width: 650px;
+}
+textarea {
+	width: 100%;
+	height: 200px;
+}
+p {
+	margin: 8px 0;
+}
+a {
+	display: block;
+}
+.variable {
+	line-height: 1.2;
+	font-size: 14px;
+	padding: 0 0.5em 0 0.5em;
+}
+#variables {
+	font-family: monospace, monospace;
+	position: absolute;
+	overflow: scroll;
+	left: 1em;
+	float: left;
+	height: 80vh;
+	width: 20%;
+	padding: 2px;
+	border-radius: 7px;
+	text-align: left;
+}
+#container {
+	height: 100%;
+	flex-grow: 1;
+}
+		</style>
+	</head>
+	<body>
+		<div class="container" id='variables'></div>
+		<div style='height: 80vh; display: flex; flex-direction: column;'>
+			<textarea id='editor'></textarea>
+			<button onclick='run()'>Run</button>
+			<div id="container"><div id="output"></div></div>
+		</div>
+	</body>
+</html>
