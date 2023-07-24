@@ -73,6 +73,8 @@ function enter_scene(si) {
 		current_scene = si
 		action_stack = [si]
 		subscene_return = []
+		current_index = 0
+		subscene_change = 0
 		process_scene(si)
 	});
 }
@@ -107,7 +109,7 @@ function action(i, si) {
 	a.classList.add("action")
 	if (!si) { // blocking action.
 		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
-		i = play.length // HACK: stop processing subscene.
+		stop = true
 	} else {
 		a.href = `javascript:execute_action(${si}, ${action_depth})`
 	}
