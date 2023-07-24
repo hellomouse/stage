@@ -30,12 +30,19 @@ let current_index
 let subscene_change
 let subscene_return = []
 
+// DEBUGGER HOOK
+let subscene_change_hook = (ind) => {}
+let scene_process_start_hook = (ind) => {}
+
 function process_scene(ind) {
+	scene_process_start_hook(ind)
 	var sc = 0
 	var si = -1
 	out:
 	for (var i = ind; i <= play.length && !stop; i++) {
 		if (subscene_change) {
+			// DEBUGGER HOOK
+			subscene_change_hook(subscene_change)
 			i = subscene_change
 			subscene_change = 0
 		}
