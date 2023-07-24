@@ -30,16 +30,18 @@ let current_index
 let subscene_change
 let subscene_return = []
 
-// DEBUGGER HOOK
+// DEBUGGER HOOKS START
 let subscene_change_hook = (ind) => {}
 let scene_process_start_hook = (ind) => {}
+// DEBUGGER HOOKS END
 
 function process_scene(ind) {
+	// DEBUGGER HOOK
 	scene_process_start_hook(ind)
 	var sc = 0
 	var si = -1
 	out:
-	for (var i = ind; i <= play.length && !stop; i++) {
+	for (var i = ind; (i <= play.length || subscene_change) && !stop; i++) {
 		if (subscene_change) {
 			// DEBUGGER HOOK
 			subscene_change_hook(subscene_change)
@@ -509,7 +511,7 @@ function parse_expression(expr) {
 
 function evaluate(i, si) {
 	var expr = ""
-	while (play[++i] != '\n' && play[i]) expr += play[i]
+	while (play[++i] && play[i] != '\n') expr += play[i]
 	current_index = i
 	var node = parse_expression(expr)
 	var result
@@ -522,7 +524,7 @@ function evaluate(i, si) {
 
 function execute(i) {
 	var expr = ""
-	while (play[++i] != '\n' && play[i]) expr += play[i]
+	while (play[++i] && play[i] != '\n') expr += play[i]
 	current_index = i
 	var node = parse_expression(expr)
 	for (var n of node.children)
@@ -532,7 +534,7 @@ function execute(i) {
 
 function check(i, si) {
 	var t = ""
-	while (play[++i] != '\n' && play[i]) t += play[i]
+	while (play[++i] && play[i] != '\n') t += play[i]
 	current_index = i
 	var result = get_value(functions["="](token(t), ['symbol', 'status']), 'bool')
 	if (result) enter_subscene(si)
