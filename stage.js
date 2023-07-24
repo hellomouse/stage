@@ -23,14 +23,22 @@ let play;
 let action_depth = 0;
 let container;
 let output;
-let status;
 let variables = {}
+
+ // this is a bit bad.
+let current_index
+let subscene_change
+let subscene_return = []
 
 function process_scene(ind) {
 	var sc = 0
 	var si = -1
 	out:
 	for (var i = ind; i <= play.length && !stop; i++) {
+		if (subscene_change) {
+			i = subscene_change
+			subscene_change = 0
+		}
 		var c = play[i]
 		if (sc) {
 			if (c == '}') sc--
@@ -45,15 +53,17 @@ function process_scene(ind) {
 			case ':': i = check(i, si + 1); si = -1; break
 			case '@': action_stack.push(i + 1); break
 			case '{': sc++; si = i; break
-			case '}':
-			case '.': break out
+			case '}': case '.':
+				if (subscene_return.length) { i = subscene_return.pop(); break; }
+				break out
 		}
 	}
 	container.scrollTop = container.scrollHeight;
 }
 
 function enter_subscene(si) {
-	process_scene(si)
+	subscene_return.push(current_index)
+	subscene_change = si
 }
 
 function enter_scene(si) {
@@ -62,6 +72,7 @@ function enter_scene(si) {
 		stop = false
 		current_scene = si
 		action_stack = [si]
+		subscene_return = []
 		process_scene(si)
 	});
 }
@@ -73,14 +84,14 @@ function execute_action(si, depth, blocking = false) {
 	output.appendChild(document.createElement("hr"))
 	stop = false
 	if (!blocking) action_stack.push(si)
-	enter_subscene(si)
+	process_scene(si)
 }
 
 function text(i) {
 	var text = ""
 	while (play[++i] != '\n' && play[i]) text += play[i]
 	insert_text(text)
-	return i - 1
+	return i
 }
 
 function insert_text(text) {
@@ -96,13 +107,13 @@ function action(i, si) {
 	a.classList.add("action")
 	if (!si) { // blocking action.
 		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
-		i = play.length + 1 // HACK: stop processing subscene.
+		i = play.length // HACK: stop processing subscene.
 	} else {
 		a.href = `javascript:execute_action(${si}, ${action_depth})`
 	}
 	a.innerText = text
 	output.appendChild(a)
-	return i - 1
+	return i
 }
 
 function list_recurse(v) {
@@ -245,7 +256,7 @@ const functions = {
 		var val = get_value(args[0], 'number')
 		for (var i = 0; i < (val ? val : 1); i++)
 			action_stack.pop()
-		process_scene(action_stack[action_stack.length - 1])
+		subscene_change = action_stack[action_stack.length - 1]
 		return token(true)
 	},
 	"not": (...args) => {
@@ -364,13 +375,18 @@ const functions = {
 	"scene-jump": (...args) => {
 		var scene = scenes[get_value(args[0], 'string')]
 		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
-		process_scene(scene)
+		if (subscene_change) {
+			subscene_return.push(scene)
+		} else {
+			subscene_return.push(current_index)
+			subscene_change = scene
+		}
 		return token(true)
 	},
 	"scene-change": (...args) => {
 		var scene = scenes[get_value(args[0], 'string')]
 		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
-		scene_stack = []	
+		scene_stack = []
 		enter_scene(scene)
 		return token(true)
 	},
@@ -440,7 +456,7 @@ function parse_expression(expr) {
 				node.parent.children.push(node)
 				node = node.parent
 				break
-			case ' ':
+			case ' ': case '\t': case '\n':
 				if (!buffer) break
 				if (!node.val) {
 					node.val = buffer
@@ -471,30 +487,33 @@ function parse_expression(expr) {
 function evaluate(i, si) {
 	var expr = ""
 	while (play[++i] != '\n' && play[i]) expr += play[i]
+	current_index = i
 	var node = parse_expression(expr)
 	var result
 	for (var n of node.children)
 		result = eval_func([n.val, n.children])
 	if (si && !!get_value(result, 'any')) enter_subscene(si)
-	else if (!si) status = result
-	return i - 1
+	else if (!si) functions["set"](['symbol', 'status'], result)
+	return i
 }
 
 function execute(i) {
 	var expr = ""
 	while (play[++i] != '\n' && play[i]) expr += play[i]
+	current_index = i
 	var node = parse_expression(expr)
 	for (var n of node.children)
 		eval_func([n.val, n.children])
-	return i - 1
+	return i
 }
 
 function check(i, si) {
 	var t = ""
 	while (play[++i] != '\n' && play[i]) t += play[i]
-	var result = get_value(functions["="](token(t), status), 'bool')
+	current_index = i
+	var result = get_value(functions["="](token(t), ['symbol', 'status']), 'bool')
 	if (result) enter_subscene(si)
-	return i - 1
+	return i
 }
 
 function restart() {
