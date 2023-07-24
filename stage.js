@@ -50,6 +50,7 @@ function process_scene(ind) {
 			case '>': i = action(i, si + 1); si = -1; break
 			case '?': i = evaluate(i, si + 1); si = -1; break
 			case '!': i = execute(i); break
+			case '/': i = comment(i); break
 			case ':': i = check(i, si + 1); si = -1; break
 			case '@': action_stack.push(i + 1); break
 			case '{': sc++; si = i; break
@@ -94,6 +95,16 @@ function text(i) {
 	while (play[++i] != '\n' && play[i]) text += play[i]
 	insert_text(text)
 	return i
+}
+
+function comment(i) {
+	if (play[i + 1] == '*') {
+		while (!(play[++i] == '*' && play[i + 1] == '/')) continue
+		return i + 1
+	} else {
+		while (play[++i] != '\n') continue
+		return i
+	}
 }
 
 function insert_text(text) {
@@ -354,6 +365,8 @@ const functions = {
 		return token(false)
 	},
 	"stop": (...args) => {
+		subscene_change = 0
+		subscene_return = []
 		stop = true
 		return token(true)
 	},
@@ -378,6 +391,7 @@ const functions = {
 		var scene = scenes[get_value(args[0], 'string')]
 		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
 		if (subscene_change) {
+			// scene change already in same expression
 			subscene_return.push(scene)
 		} else {
 			subscene_return.push(current_index)
