@@ -403,7 +403,9 @@ const functions = {
 			// scene change already in same expression
 			subscene_return.push(scene)
 		} else {
-			subscene_return.push(current_index)
+			// bit of a hack.
+			if (subscene_return[subscene_return.length - 1] != current_index)
+				subscene_return.push(current_index)
 			subscene_change = scene
 		}
 		return token(true)
