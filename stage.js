@@ -35,6 +35,10 @@ let subscene_change_hook = (ind) => {}
 let scene_process_start_hook = (ind) => {}
 // DEBUGGER HOOKS END
 
+/* ------ */
+/* SCENES */
+/* ------ */
+
 function process_scene(ind) {
 	// DEBUGGER HOOK
 	scene_process_start_hook(ind)
@@ -58,9 +62,9 @@ function process_scene(ind) {
 			case ']': i = text(i); break
 			case '>': i = action(i, si + 1); si = -1; break
 			case '?': i = evaluate(i, si + 1); si = -1; break
+			case ':': i = check(i, si + 1); si = -1; break
 			case '!': i = execute(i); break
 			case '/': i = comment(i); break
-			case ':': i = check(i, si + 1); si = -1; break
 			case '@': action_stack.push(i + 1); break
 			case '{': sc++; si = i; break
 			case '}': case '.':
@@ -69,6 +73,76 @@ function process_scene(ind) {
 		}
 	}
 	container.scrollTop = container.scrollHeight;
+}
+
+function text(i) {
+	var text = ""
+	while (play[++i] != '\n' && play[i]) text += play[i]
+	insert_text(text)
+	return i
+}
+
+function insert_text(text) {
+	var p = document.createElement("p")
+	p.innerText = text
+	output.appendChild(p)
+}
+
+function action(i, si) {
+	var text = ""
+	while (play[++i] != '\n' && play[i]) text += play[i]
+	var a = document.createElement("a")
+	a.classList.add("action")
+	if (!si) { // blocking action.
+		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
+		stop = true
+	} else {
+		a.href = `javascript:execute_action(${si}, ${action_depth})`
+	}
+	a.innerText = text
+	output.appendChild(a)
+	return i
+}
+
+function evaluate(i, si) {
+	var expr = ""
+	while (play[++i] && play[i] != '\n') expr += play[i]
+	current_index = i
+	var node = parse_expression(expr)
+	var result
+	for (var n of node.children)
+		result = eval_func([n.val, n.children])
+	if (si && !!get_value(result, 'any')) enter_subscene(si)
+	else if (!si) functions["set"](['symbol', 'status'], result)
+	return i
+}
+
+function check(i, si) {
+	var t = ""
+	while (play[++i] && play[i] != '\n') t += play[i]
+	current_index = i
+	var result = get_value(functions["="](token(t), ['symbol', 'status']), 'bool')
+	if (result) enter_subscene(si)
+	return i
+}
+
+function execute(i) {
+	var expr = ""
+	while (play[++i] && play[i] != '\n') expr += play[i]
+	current_index = i
+	var node = parse_expression(expr)
+	for (var n of node.children)
+		eval_func([n.val, n.children])
+	return i
+}
+function comment(i) {
+	if (play[i + 1] == '*') {
+		while (!(play[++i] == '*' && play[i + 1] == '/')) continue
+		return i + 1
+	} else {
+		while (play[++i] != '\n') continue
+		return i
+	}
 }
 
 function enter_subscene(si) {
@@ -99,44 +173,9 @@ function execute_action(si, depth, blocking = false) {
 	process_scene(si)
 }
 
-function text(i) {
-	var text = ""
-	while (play[++i] != '\n' && play[i]) text += play[i]
-	insert_text(text)
-	return i
-}
-
-function comment(i) {
-	if (play[i + 1] == '*') {
-		while (!(play[++i] == '*' && play[i + 1] == '/')) continue
-		return i + 1
-	} else {
-		while (play[++i] != '\n') continue
-		return i
-	}
-}
-
-function insert_text(text) {
-	var p = document.createElement("p")
-	p.innerText = text
-	output.appendChild(p)
-}
-
-function action(i, si) {
-	var text = ""
-	while (play[++i] != '\n' && play[i]) text += play[i]
-	var a = document.createElement("a")
-	a.classList.add("action")
-	if (!si) { // blocking action.
-		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
-		stop = true
-	} else {
-		a.href = `javascript:execute_action(${si}, ${action_depth})`
-	}
-	a.innerText = text
-	output.appendChild(a)
-	return i
-}
+/* ----------- */
+/* EXPRESSIONS */
+/* ----------- */
 
 function list_recurse(v) {
 	return ['list', v.map(x => {
@@ -160,6 +199,23 @@ function eval_func(v) {
 		args.push(n)
 	}
 	return functions[v[0]](...args)
+}
+
+function token(token) {
+	const string_re = /^('.*')|(".*")$/
+	const bool_re = /^(yes|no|true|false|t|f)$/
+	if (Array.isArray(token))
+		return ["list", token]
+	if (string_re.exec(token))
+		return ["string", token]
+	if (!isNaN(token) && !isNaN(parseFloat(token)))
+		return ["number", Number(token)]
+	if (bool_re.exec(token)) {
+		if (typeof token == "boolean")
+			return ["bool", token]
+		return ["bool", token.startsWith("t") || token.startsWith("y")]
+	}
+	return ["symbol", token]
 }
 
 function get_value(v, type) {
@@ -419,23 +475,6 @@ const functions = {
 	},
 }
 
-function token(token) {
-	const string_re = /^('.*')|(".*")$/
-	const bool_re = /^(yes|no|true|false|t|f)$/
-	if (Array.isArray(token))
-		return ["list", token]
-	if (string_re.exec(token))
-		return ["string", token]
-	if (!isNaN(token) && !isNaN(parseFloat(token)))
-		return ["number", Number(token)]
-	if (bool_re.exec(token)) {
-		if (typeof token == "boolean")
-			return ["bool", token]
-		return ["bool", token.startsWith("t") || token.startsWith("y")]
-	}
-	return ["symbol", token]
-}
-
 function parse_expression(expr) {
 	var node = {parent: null, type: null, val: null, children: []}
 	var string
@@ -510,39 +549,6 @@ function parse_expression(expr) {
 	return node
 }
 
-
-function evaluate(i, si) {
-	var expr = ""
-	while (play[++i] && play[i] != '\n') expr += play[i]
-	current_index = i
-	var node = parse_expression(expr)
-	var result
-	for (var n of node.children)
-		result = eval_func([n.val, n.children])
-	if (si && !!get_value(result, 'any')) enter_subscene(si)
-	else if (!si) functions["set"](['symbol', 'status'], result)
-	return i
-}
-
-function execute(i) {
-	var expr = ""
-	while (play[++i] && play[i] != '\n') expr += play[i]
-	current_index = i
-	var node = parse_expression(expr)
-	for (var n of node.children)
-		eval_func([n.val, n.children])
-	return i
-}
-
-function check(i, si) {
-	var t = ""
-	while (play[++i] && play[i] != '\n') t += play[i]
-	current_index = i
-	var result = get_value(functions["="](token(t), ['symbol', 'status']), 'bool')
-	if (result) enter_subscene(si)
-	return i
-}
-
 function restart() {
 	variables = {}
 	action_depth = 0
@@ -550,6 +556,10 @@ function restart() {
 	scene_stack = []
 	enter_scene(scenes["start"] ? scenes["start"] : 0)
 }
+
+/* -------------- */
+/* FRONT HANDLING */
+/* -------------- */
 
 function file_drop(e) {
 	e.preventDefault();
