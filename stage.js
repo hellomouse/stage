@@ -63,6 +63,7 @@ function process_scene(ind) {
 			case '>': i = action(i, si + 1); si = -1; break
 			case '?': i = evaluate(i, si + 1); si = -1; break
 			case ':': i = check(i, si + 1); si = -1; break
+			case '[': i = input(i); break
 			case '!': i = execute(i); break
 			case '/': i = comment(i); break
 			case '@': action_stack.push(i + 1); break
@@ -79,6 +80,19 @@ function text(i) {
 	var text = ""
 	while (play[++i] != '\n' && play[i]) text += play[i]
 	insert_text(text)
+	return i
+}
+
+function input(i) {
+	var label = ""
+	while (play[++i] != '\n' && play[i]) label += play[i]
+	var input = document.createElement("input")
+	input.classList.add("text-input")
+	input.type = "text"
+	input.placeholder = label
+	input.setAttribute("onkeydown", `input_check(event, ${i}, ${action_depth})`)
+	output.appendChild(input)
+	stop = true // blocking
 	return i
 }
 
@@ -171,6 +185,21 @@ function execute_action(si, depth, blocking = false) {
 	stop = false
 	if (!blocking) action_stack.push(si)
 	process_scene(si)
+}
+
+function input_check(e, si, depth) {
+	if (depth != action_depth) {
+		e.preventDefault()
+		return
+	}
+	if (e.key == "Enter") {
+		e.preventDefault()
+		functions["set"](['symbol', 'status'], ["string", `"${e.target.value}"`])
+		action_depth++
+		output.appendChild(document.createElement("hr"))
+		stop = false
+		process_scene(si)
+	}
 }
 
 /* ----------- */
