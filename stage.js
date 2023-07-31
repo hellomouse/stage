@@ -321,11 +321,21 @@ const functions = {
 		for (var i = 1; i < args.length; i++) r /= get_value(args[i], 'number')
 		return token(r)
 	},
+	"%": (...args) => {
+		var a = get_value(args[0], 'number')
+		var n = get_value(args[1], 'number')
+		return token(((a % n) + n) % n) // modulo, not remainder
+	},
 	">": (...args) => {
 		return token(get_value(args[0], 'number') > get_value(args[1], 'number'))
 	},
 	"<": (...args) => {
 		return token(get_value(args[0], 'number') < get_value(args[1], 'number'))
+	},
+	"rem": (...args) => {
+		var a = get_value(args[0], 'number')
+		var n = get_value(args[1], 'number')
+		return token(a % n)
 	},
 	"get": (...args) => {
 		return resolve_token(get_token(args[0]))
@@ -336,6 +346,14 @@ const functions = {
 			if (Array.isArray(val)) functions["do"](...val)
 		}
 		return token(true)
+	},
+	"abs": (...args) => {
+		var r = get_value(args[0], 'number')
+		return token(Math.abs(r))
+	},
+	"floor": (...args) => {
+		var r = get_value(args[0], 'number')
+		return token(Math.floor(r))
 	},
 	"set": (...args) => {
 		var sym = get_token(args[0])
