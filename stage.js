@@ -78,7 +78,22 @@ function process_scene(ind) {
 
 function text(i) {
 	var text = ""
-	while (play[++i] != '\n' && play[i]) text += play[i]
+	while (play[++i] != '\n' && play[i]) {
+		if (play[i] == "$") { // this is awful
+			if (play[i + 1] == "$") {
+				text += "$"
+				i++
+				continue
+			}
+			var symbol = ""
+			while (play[++i] != '\n' && play[i] != ' ' && play[i]) symbol += play[i]
+			text += get_value(token(symbol))
+			if (play[i] && play[i] != '\n') text += play[i]
+			else i--
+		} else {
+			text += play[i]
+		}
+	}
 	insert_text(text)
 	return i
 }
@@ -104,7 +119,22 @@ function insert_text(text) {
 
 function action(i, si) {
 	var text = ""
-	while (play[++i] != '\n' && play[i]) text += play[i]
+	while (play[++i] != '\n' && play[i]) {
+		if (play[i] == "$") {
+			if (play[i + 1] == "$") {
+				text += "$"
+				i++
+				continue
+			}
+			var symbol = ""
+			while (play[++i] != '\n' && play[i] != ' ' && play[i]) symbol += play[i]
+			text += get_value(token(symbol))
+			if (play[i] && play[i] != '\n') text += play[i]
+			else i--
+		} else {
+			text += play[i]
+		}
+	}
 	var a = document.createElement("a")
 	a.classList.add("action")
 	if (!si) { // blocking action.
