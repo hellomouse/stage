@@ -162,7 +162,7 @@ function action(i, si) {
 		a.setAttribute("onclick", `execute_action(event, ${i}, true)`)
 		stop = true
 	} else {
-		a.setAttribute("onclick", `execute_action(event, ${i}`)
+		a.setAttribute("onclick", `execute_action(event, ${si})`)
 	}
 	action_container.appendChild(a)
 	return i
