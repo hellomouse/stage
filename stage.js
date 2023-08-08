@@ -368,7 +368,10 @@ const functions = {
 		return token(a % n)
 	},
 	"get": (...args) => {
-		return resolve_token(get_token(args[0]))
+		var res
+		for (var a of args)
+			res = resolve_token(get_token(a))
+		return res
 	},
 	"do": (...args) => {
 		for (var a of args) {
