@@ -23,6 +23,7 @@ let play;
 let action_depth = 0;
 let container;
 let output;
+let action_container;
 let variables = {}
 
  // this is a bit bad.
@@ -93,7 +94,7 @@ function input(i) {
 	input.type = "text"
 	input.placeholder = label
 	input.setAttribute("onkeydown", `input_check(event, ${i}, ${action_depth})`)
-	output.appendChild(input)
+	action_container.appendChild(input)
 	stop = true // blocking
 	return i
 }
@@ -140,7 +141,7 @@ function text_format(text, parent_element) {
 function insert_text(text) {
 	var p = document.createElement("p")
 	text_format(text, p)
-	output.appendChild(p)
+	action_container.appendChild(p)
 }
 
 function action(i, si) {
@@ -148,14 +149,22 @@ function action(i, si) {
 	var text = ""
 	while (play[++i] != '\n' && play[i]) text += play[i]	
 	text_format(text, a)
+
+}
+
+function action(i, si) {
+	var text = ""
+	var a = document.createElement("div")
+	while (play[++i] != '\n' && play[i]) text += play[i]	
+	text_format(text, a)
 	a.classList.add("action")
 	if (!si) { // blocking action.
-		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
+		a.setAttribute("onclick", `execute_action(event, ${i}, true)`)
 		stop = true
 	} else {
-		a.href = `javascript:execute_action(${si}, ${action_depth})`
+		a.setAttribute("onclick", `execute_action(event, ${i}`)
 	}
-	output.appendChild(a)
+	action_container.appendChild(a)
 	return i
 }
 
@@ -232,17 +241,21 @@ function enter_scene(si) {
 	});
 }
 
-function execute_action(si, depth, blocking = false) {
+function execute_action(e, si, blocking = false) {
+	var depth = e.target.parentElement.attributes["adepth"].value
 	if (depth != action_depth)
 		return
 	action_depth++
 	output.appendChild(document.createElement("hr"))
+	new_action_container()
+	output.appendChild(action_container)
 	stop = false
 	if (!blocking) action_stack.push(si)
 	process_scene(si)
 }
 
-function input_check(e, si, depth) {
+function input_check(e, si) {
+	var depth = e.target.parentElement.attributes["adepth"].value
 	if (depth != action_depth) {
 		e.preventDefault()
 		return
@@ -252,6 +265,8 @@ function input_check(e, si, depth) {
 		set_var("status", ['string', e.target.value])
 		action_depth++
 		output.appendChild(document.createElement("hr"))
+		new_action_container()
+		output.appendChild(action_container)
 		stop = false
 		process_scene(si)
 	}
@@ -578,6 +593,19 @@ const funcs = {
 		}
 		return ['bool', false]
 	}],
+	"rewind": [[["count", "number"]], (args, count) => {
+		count = count ? count : 1
+		var act_cont = document.getElementById(`adepth_${action_depth - count}`)
+		if (act_cont) {
+			var clone = act_cont.cloneNode(true)
+			action_depth++
+			clone.id = `adepth_${action_depth}`
+			clone.setAttribute("adepth", action_depth)
+			output.appendChild(clone)
+			return ['bool', true]
+		}
+		return ['bool', false]
+	}],
 }
 
 define_function("+1", "var:symbol", parse_expression("(set var (+ var 1))"))
@@ -805,7 +833,8 @@ function parse_expression(expr) {
 function restart() {
 	variables = {}
 	action_depth = 0
-	output.replaceChildren()
+	new_action_container()
+	output.replaceChildren(action_container)
 	scene_stack = []
 	enter_scene(scenes["start"] ? scenes["start"] : 0)
 }
@@ -828,11 +857,19 @@ function submit_file(e) {
 	play_file(e.target.files[0])
 }
 
+function new_action_container() {
+	action_container = document.createElement("div")
+	action_container.id = `adepth_${action_depth}`
+	action_container.classList.add("action-container")
+	action_container.setAttribute("adepth", action_depth)
+}
+
 function parse_play() {
 	var index = -1
 	variables = {}
 	action_depth = 0
-	output.replaceChildren()
+	new_action_container()
+	output.replaceChildren(action_container)
 	scene_stack = []
 	scenes = []
 	while ((index = play.indexOf("START ", index + 1)) != -1) {

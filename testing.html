@@ -19,8 +19,25 @@ p {
 	margin: 8px 0;
 }
 
-a {
-	display: block;
+.action {
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.action {
+	color: #0000EE;
+}
+
+.action:hover {
+	color: #ee7700;
+}
+
+.action:before {
+	content: "> ";
+}
+
+.action:hover:before {
+	content: "​ >";
 }
 
 .variable {
