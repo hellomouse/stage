@@ -477,6 +477,16 @@ const funcs = {
 		insert_text(out)
 		return ['bool', true]
 	}],
+	"rewind": [[["count", "number"]], (args, count) => {
+		count = count ? count : 1
+		var act_cont = document.getElementById(`adepth_${action_depth - count}`)
+		if (act_cont) {
+			for (var child of act_cont.children)
+				action_container.appendChild(child.cloneNode(true))
+			return ['bool', true]
+		}
+		return ['bool', false]
+	}],
 	"concat": [[["strings", "#string"]], (args, strings) => {
 		var out = ""
 		for (var s of strings) out += s
