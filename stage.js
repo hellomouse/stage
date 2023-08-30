@@ -832,10 +832,19 @@ window.onload = e => {
 	container = document.getElementById("container")
 	output = document.getElementById("output")
 	var params = new URLSearchParams(window.location.search);
-	var load = params.get('load')
-	if (load) {
-		fetch(load, {cache: "no-cache"})
-			.then(function(response) { return response.text(); })
-			.then(function(text) { play = text; parse_play(); })
+	var l = params.get('gist')
+	if (l) {
+		fetch(`https://api.github.com/gists/${l}`, {cache: "no-cache"})
+			.then(function(response) { return response.json() })
+			.then(function(json) { play = Object.values(json.files)[0].content; parse_play() })
+		return
+	}
+
+	l = params.get('load')
+	if (l) {
+		fetch(l, {cache: "no-cache"})
+			.then(function(response) { return response.text() })
+			.then(function(text) { play = text; parse_play() })
+		return
 	}
 }
