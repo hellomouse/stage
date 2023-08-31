@@ -478,7 +478,7 @@ const functions = {
 		var a = resolve_token(args[0])
 		if (a[0] == 'list') {
 			var l = get_value(args[0], 'list')
-			return resolve_token(l[Math.floor(Math.random() * l.length)])
+			return ['reference', [get_token(args[0]), Math.floor(Math.random() * l.length)]]
 		}
 		var min = get_value(a, 'number')
 		var max = get_value(args[1], 'number')
@@ -504,6 +504,26 @@ const functions = {
 		var i = Math.min(Math.max(get_value(args[1], 'number'), 0), lst[1].length - 1)
 		return ['reference', [l, i]]
 	},
+	"del": (...args) => {
+		var tok = get_token(args[0])
+		if (tok[0] == 'reference') {
+			var lst = resolve_token(tok[1][0])[1]
+			lst.splice(tok[1][1], 1)
+			return token(true)
+		} else if (tok[0] == 'symbol') {
+			var reslv = resolve_token(tok)
+			if (reslv[0] == 'reference') {
+				var lst = resolve_token(reslv[1][0])[1]
+				lst.splice(reslv[1][1], 1)
+				return token(true)
+			} else if (reslv[0] == 'symbol') {
+				tok = reslv
+			}
+			delete variables[tok[1]]
+			return token(true)
+		}
+		return token(false)
+	},
 	"length": (...args) => {
 		var l = get_value(args[0], 'any')
 		if (l.length) return token(l.length)
@@ -521,7 +541,7 @@ const functions = {
 	},
 	"scene-pop": (...args) => {
 		var scene = scene_stack.pop()
-		if (scene) enter_scene(scene)
+		if (scene != undefined) enter_scene(scene)
 		else console.log("WARN: tried to pop without scenes in stack.")
 		return token(true)
 	},
