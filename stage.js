@@ -151,12 +151,13 @@ function action(i, si) {
 function evaluate(i, si) {
 	var expr = ""
 	while (play[++i] && play[i] != '\n') expr += play[i]
+	expr += '\n'
 	current_index = i
 	var node = parse_expression(expr)
 	var result
-	for (var n of node.children)
-		result = eval_func([n.val, n.children])
-	if (si && !!get_value(result, 'any')) enter_subscene(si)
+	for (var n of node)
+		result = resolve_token(n, 'any')
+	if (si && get_value(result)) enter_subscene(si)
 	else if (!si) functions["set"](['symbol', 'status'], result)
 	return i
 }
@@ -173,10 +174,11 @@ function check(i, si) {
 function execute(i) {
 	var expr = ""
 	while (play[++i] && play[i] != '\n') expr += play[i]
+	expr += '\n'
 	current_index = i
 	var node = parse_expression(expr)
-	for (var n of node.children)
-		eval_func([n.val, n.children])
+	for (var n of node)
+		get_value(n, 'any')
 	return i
 }
 function comment(i) {
@@ -236,28 +238,9 @@ function input_check(e, si, depth) {
 /* EXPRESSIONS */
 /* ----------- */
 
-function list_recurse(v) {
-	return ['list', v.map(x => {
-		if (x.type == 'function') return eval_func([x.val, x.children])
-		else if (x.type == 'list') return list_recurse(x.children)
-		return x
-	})]
-}
-
 function eval_func(v) {
-	var children = v[1]
-	var args = []
-	for (var n of children) {
-		if (n.type == 'function') {
-			args.push(['function', [n.val, n.children]])
-			continue
-		} else if (n.type == 'list') {
-			args.push(list_recurse(n.children))
-			continue
-		}
-		args.push(n)
-	}
-	return functions[v[0]](...args)
+	var args = v[1]
+	return functions[v[0]](...v[1])
 }
 
 function token(token) {
@@ -312,8 +295,6 @@ function resolve_token(v) {
 }
 
 function humanify_token(v) {
-	if (v.type == 'function')
-		return humanify_token(['function', [v.val, v.children]])
 	switch (v[0]) {
 		case 'reference':
 			return `ref ${humanify_token(v[1][0])}[${v[1][1]}]`
@@ -576,7 +557,9 @@ const functions = {
 }
 
 function parse_expression(expr) {
-	var node = {parent: null, type: null, val: null, children: []}
+	var parents = []
+	var parent_stack = []
+	var current_node
 	var string
 	var sym
 	var lst
@@ -589,52 +572,67 @@ function parse_expression(expr) {
 		}
 		switch (c) {
 			case '(':
-				var n = {parent: node, type: 'function', val: null, children: []}
-				if (lst) {n.type = n.val = 'list'; lst = false}
-				else if (sym) {n.type = 'fsym'; sym = false}
-				else if (functions[buffer]) n.val = buffer
+				var n
+				if (lst)
+					n = ['list', []]
+				else
+					n = ['function', [functions[buffer] ? buffer : "", []]]
+				if (current_node) {
+					parent_stack.push(current_node)
+					switch (current_node[0]) {
+						case 'function': current_node[1][1].push(sym ? ['function', ['sym', [n]]] : n); break
+						case 'list': current_node[1].push(sym ? ['function', ['sym', [n]]] : n); break
+						default: console.log("WARN: Invalid parent type", current_node[0])
+					}
+				} else {
+					parents.push(n)
+				}
+				current_node = n
 				buffer = ""
-				node = n
 				break
 			case ')':
 				if (buffer) {
-					if (!node.val) {
-						node.val = buffer
-						if (!functions[node.val]) console.log("WARN: Unknown function", node.val)
+					if (current_node[0] == 'function' && !current_node[1][0]) {
+						current_node[1][0] = buffer
+						if (!functions[buffer]) console.log("WARN: Invalid function", buffer)
 					} else {
-						var id = token(buffer)
+						var tk = token(buffer)
 						if (sym) {
-							var s = {parent: node, type: 'function', val: 'sym', children: [id]}
-							node.children.push(s)
+							tk = ['function', ['sym', [tk]]]
 							sym = false
-						} else {
-							node.children.push(id)
+						}
+						switch (current_node[0]) {
+							case 'function': current_node[1][1].push(tk); break
+							case 'list': current_node[1].push(tk); break
 						}
 					}
-					buffer = ""
 				}
-				if (node.type == 'fsym') {
-					node.type = 'function'
-					var s = {parent: node.parent, type: 'function', val: 'sym', children: [node]}
-					node.parent = s
-					node = s
-				}
-				node.parent.children.push(node)
-				node = node.parent
+				current_node = parent_stack.pop()
+				buffer = ""
 				break
 			case ' ': case '\t': case '\n':
 				if (!buffer) break
-				if (!node.val) {
-					node.val = buffer
-					if (!functions[node.val]) console.log("WARN: Unknown function", node.val)
+				var tk = token(buffer)
+				if (sym) {
+					tk = ['function', ['sym', [tk]]]
+					sym = false
+				}
+
+				if (!current_node) {
+					parents.push(tk)
 				} else {
-					var id = token(buffer)
-					if (sym) {
-						var s = {parent: node, type: 'function', val: 'sym', children: [id]}
-						node.children.push(s)
-						sym = false
-					} else {
-						node.children.push(id)
+					switch (current_node[0]) {
+						case 'function':
+							if (!current_node[1][0]) {
+								current_node[1][0] = buffer
+								if (!functions[buffer]) console.log("WARN: Invalid function", buffer)
+							} else {
+								current_node[1][1].push(tk)
+							}
+							break
+						case 'list':
+							current_node[1].push(tk)
+							break
 					}
 				}
 				buffer = ""
@@ -646,7 +644,7 @@ function parse_expression(expr) {
 				buffer += c
 		}
 	}
-	return node
+	return parents
 }
 
 function restart() {
