@@ -661,6 +661,7 @@ function parse_play() {
 	action_depth = 0
 	output.replaceChildren()
 	scene_stack = []
+	scenes = []
 	while ((index = play.indexOf("START ", index + 1)) != -1) {
 		var buffer = ""
 		index += 5
