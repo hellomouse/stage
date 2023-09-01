@@ -238,11 +238,6 @@ function input_check(e, si, depth) {
 /* EXPRESSIONS */
 /* ----------- */
 
-function eval_func(v) {
-	var args = v[1]
-	return functions[v[0]](...v[1])
-}
-
 function token(token) {
 	const string_re = /^('.*')|(".*")$/
 	const bool_re = /^(yes|no|true|false|t|f)$/
@@ -263,20 +258,19 @@ function token(token) {
 function get_value(v, type) {
 	if (!v)
 		return null
-	if (type != 'symbol' || v[0] == 'function')
-		v = resolve_token(resolve_token(v))
 	var vt = v[0]
-	var vv = v[1]
+	if (type != 'symbol' || vt == 'function')
+		v = resolve_token(resolve_token(v))
 	if (vt != type && type != 'any')
 		console.log("WARN: Incorrect value type.")
-	return vv
+	return v[1]
 }
 
 function get_token(v) {
 	if (!v)
 		return null
 	if (v[0] == 'function')
-		v = eval_func(v[1])
+		v = functions[v[1][0]](...v[1][1])
 	return v
 }
 
@@ -288,7 +282,7 @@ function resolve_token(v) {
 	if (v[0] == 'symbol')
 		v = variables[v[1]] ? variables[v[1]] : ['number', 0]
 	if (v[0] == 'function')
-		v = eval_func(v[1])
+		v = functions[v[1][0]](...v[1][1])
 	return v
 }
 
@@ -297,7 +291,7 @@ function humanify_token(v) {
 		case 'reference':
 			return `ref ${humanify_token(v[1][0])}[${v[1][1]}]`
 		case 'symbol':
-			return `${v[1]}`
+			return `sym ${v[1]}`
 		case 'function':
 			return `(${v[1][0]} ${v[1][1].map(x => humanify_token(x)).join(" ")})`
 		case 'list':
