@@ -249,7 +249,7 @@ function token(token) {
 	if (Array.isArray(token))
 		return ["list", token]
 	if (string_re.exec(token))
-		return ["string", token]
+		return ["string", token.slice(1, -1)]
 	if (!isNaN(token) && !isNaN(parseFloat(token)))
 		return ["number", Number(token)]
 	if (bool_re.exec(token)) {
@@ -269,8 +269,6 @@ function get_value(v, type) {
 	var vv = v[1]
 	if (vt != type && type != 'any')
 		console.log("WARN: Incorrect value type.")
-	if (vt == 'string')
-		return vv.slice(1, -1)
 	return vv
 }
 
@@ -434,7 +432,7 @@ const functions = {
 	"concat": (...args) => {
 		var out = ""
 		for (var a of args) out += String(get_value(a, 'any'))
-		return token(out)
+		return ['string', out]
 	},
 	"if": (...args) => {
 		var condition = get_value(args[0], 'any')
