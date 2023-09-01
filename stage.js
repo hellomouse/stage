@@ -226,7 +226,7 @@ function input_check(e, si, depth) {
 	}
 	if (e.key == "Enter") {
 		e.preventDefault()
-		functions["set"](['symbol', 'status'], ["string", `"${e.target.value}"`])
+		functions["set"](['symbol', 'status'], ['string', `${e.target.value}`])
 		action_depth++
 		output.appendChild(document.createElement("hr"))
 		stop = false
