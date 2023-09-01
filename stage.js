@@ -79,20 +79,7 @@ function process_scene(ind) {
 function text(i) {
 	var text = ""
 	while (play[++i] != '\n' && play[i]) {
-		if (play[i] == "$") { // this is awful
-			if (play[i + 1] == "$") {
-				text += "$"
-				i++
-				continue
-			}
-			var symbol = ""
-			while (play[++i] != '\n' && play[i] != ' ' && play[i]) symbol += play[i]
-			text += get_value(token(symbol))
-			if (play[i] && play[i] != '\n') text += play[i]
-			else i--
-		} else {
-			text += play[i]
-		}
+		text += play[i]
 	}
 	insert_text(text)
 	return i
@@ -111,31 +98,56 @@ function input(i) {
 	return i
 }
 
+function text_format(text, parent_element) {
+	var c = parent_element
+	var fsc = 0
+	var i = -1
+	while (text[++i]) {
+		if (text[i + 1] == "<") {
+			var nw
+			switch (text[i]) {
+				case 'b': nw = document.createElement("b"); break
+				case 'i': nw = document.createElement("i"); break
+				case 'c': nw = document.createElement("code"); break
+				case '$':
+					var sym = ""
+					// <
+					i++
+					while (text[++i] && text[i] != '>') sym += text[i]
+					var ret
+					for (var tok of parse_expression(sym + '\n'))
+						ret = get_value(tok)
+					c.innerHTML += ret
+					continue
+				case '\\': default: continue
+			}
+
+			c.appendChild(nw)
+			c = nw
+			i++
+			fsc++
+			continue
+		}
+		if (fsc && text[i] == '>') {
+			fsc--
+			c = c.parentNode
+			continue
+		}
+		c.innerHTML += text[i]
+	}
+}
+
 function insert_text(text) {
 	var p = document.createElement("p")
-	p.innerText = text
+	text_format(text, p)
 	output.appendChild(p)
 }
 
 function action(i, si) {
-	var text = ""
-	while (play[++i] != '\n' && play[i]) {
-		if (play[i] == "$") {
-			if (play[i + 1] == "$") {
-				text += "$"
-				i++
-				continue
-			}
-			var symbol = ""
-			while (play[++i] != '\n' && play[i] != ' ' && play[i]) symbol += play[i]
-			text += get_value(token(symbol))
-			if (play[i] && play[i] != '\n') text += play[i]
-			else i--
-		} else {
-			text += play[i]
-		}
-	}
 	var a = document.createElement("a")
+	var text = ""
+	while (play[++i] != '\n' && play[i]) text += play[i]	
+	text_format(text, a)
 	a.classList.add("action")
 	if (!si) { // blocking action.
 		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
@@ -143,7 +155,6 @@ function action(i, si) {
 	} else {
 		a.href = `javascript:execute_action(${si}, ${action_depth})`
 	}
-	a.innerText = text
 	output.appendChild(a)
 	return i
 }
