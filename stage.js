@@ -23,6 +23,8 @@ let play;
 let action_depth = 0;
 let container;
 let output;
+let action_scopes = {};
+let variable_scopes = [];
 let variables = {}
 
  // this is a bit bad.
@@ -69,7 +71,7 @@ function process_scene(ind) {
 			case '@': action_stack.push(i + 1); break
 			case '{': sc++; si = i; break
 			case '}': case '.':
-				if (subscene_return.length) { i = subscene_return.pop(); break; }
+				if (subscene_return.length) { variable_scopes.shift(); i = subscene_return.pop(); break; }
 				break out
 		}
 	}
@@ -145,6 +147,13 @@ function action(i, si) {
 	}
 	a.innerText = text
 	output.appendChild(a)
+	if (variable_scopes.length) {
+		var scope = {}
+		variable_scopes.forEach((o) => {
+			for (var k in o) if (!scope[k]) scope[k] = o[k]
+		})
+		action_scopes[si] = scope
+	}
 	return i
 }
 
@@ -192,6 +201,7 @@ function comment(i) {
 }
 
 function enter_subscene(si) {
+	variable_scopes.unshift({})
 	subscene_return.push(current_index)
 	subscene_change = si
 }
@@ -216,6 +226,11 @@ function execute_action(si, depth, blocking = false) {
 	output.appendChild(document.createElement("hr"))
 	stop = false
 	if (!blocking) action_stack.push(si)
+	if (action_scopes[si]) {
+		for (var k in action_scopes[si])
+			variables[k] = action_scopes[si][k]
+	}
+	action_scopes = {}
 	process_scene(si)
 }
 
@@ -279,8 +294,14 @@ function resolve_token(v) {
 		return null
 	if (v[0] == 'reference')
 		v = resolve_token(v[1][0])[1][v[1][1]]
-	if (v[0] == 'symbol')
-		v = variables[v[1]] ? variables[v[1]] : ['number', 0]
+	if (v[0] == 'symbol') {
+		var o
+		for (var s of variable_scopes) {
+			if (s[v[1]]) { o = s[v[1]]; break }
+		}
+		if (o) v = o
+		else v = variables[v[1]] ? variables[v[1]] : ['number', 0]
+	}
 	if (v[0] == 'function')
 		v = functions[v[1][0]](...v[1][1])
 	return v
@@ -366,6 +387,12 @@ const functions = {
 		if (sym[0] == 'reference')
 			return resolve_token(sym[1][0])[1][sym[1][1]] = resolve_token(args[1])
 		return variables[get_value(sym, "symbol")] = resolve_token(args[1])
+	},
+	"setl": (...args) => {
+		var sym = get_value(args[0], "symbol")
+		if (!variable_scopes.length)
+			return variables[sym] = resolve_token(args[1])
+		return variable_scopes[0][sym] = resolve_token(args[1])
 	},
 	"sym": (...args) => {
 		return args[0]
@@ -492,7 +519,12 @@ const functions = {
 			} else if (reslv[0] == 'symbol') {
 				tok = reslv
 			}
-			delete variables[tok[1]]
+			var o
+			for (var s of variable_scopes) {
+				if (s[tok[1]]) { o = s; break }
+			}
+			if (!o) o = variables
+			delete o[tok[1]]
 			return token(true)
 		}
 		return token(false)
