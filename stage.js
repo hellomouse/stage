@@ -23,7 +23,7 @@ let play;
 let action_depth = 0;
 let container;
 let output;
-let action_scopes = {};
+let action_scopes;
 let variable_scopes;
 let variables = {}
 
@@ -228,10 +228,7 @@ function execute_action(si, depth, blocking = false) {
 	output.appendChild(document.createElement("hr"))
 	stop = false
 	if (!blocking) action_stack.push(si)
-	if (action_scopes[si]) {
-		for (var k in action_scopes[si])
-			variables[k] = action_scopes[si][k]
-	}
+	variable_scopes = [action_scopes[si]]
 	action_scopes = {}
 	process_scene(si)
 }
