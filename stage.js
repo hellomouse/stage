@@ -24,7 +24,7 @@ let action_depth = 0;
 let container;
 let output;
 let action_scopes = {};
-let variable_scopes = [];
+let variable_scopes;
 let variables = {}
 
  // this is a bit bad.
@@ -210,6 +210,8 @@ function enter_scene(si) {
 	stop = true
 	Promise.resolve().then(() => {
 		stop = false
+		variable_scopes = [{}]
+		action_scopes = {}
 		current_scene = si
 		action_stack = [si]
 		subscene_return = []
@@ -382,17 +384,27 @@ const functions = {
 		var r = get_value(args[0], 'number')
 		return token(Math.floor(r))
 	},
+	"local": (...args) => {
+		var sym = get_value(args[0], "symbol")
+		var val = resolve_token(args[0])
+		variable_scopes[0][sym] = val
+		return token(true)
+	},
 	"set": (...args) => {
 		var sym = get_token(args[0])
 		if (sym[0] == 'reference')
 			return resolve_token(sym[1][0])[1][sym[1][1]] = resolve_token(args[1])
-		return variables[get_value(sym, "symbol")] = resolve_token(args[1])
+		sym = get_value(sym, 'symbol')
+		for (var scope of variable_scopes) {
+			if (!(sym in scope))
+				continue
+			return scope[sym] = resolve_token(args[1])
+		}
+		return variables[sym] = resolve_token(args[1])
 	},
 	"setl": (...args) => {
-		var sym = get_value(args[0], "symbol")
-		if (!variable_scopes.length)
-			return variables[sym] = resolve_token(args[1])
-		return variable_scopes[0][sym] = resolve_token(args[1])
+		functions["local"](args[0])
+		return functions["set"](args[0], args[1])
 	},
 	"sym": (...args) => {
 		return args[0]
@@ -565,8 +577,10 @@ const functions = {
 			subscene_return.push(scene)
 		} else {
 			// bit of a hack.
-			if (subscene_return[subscene_return.length - 1] != current_index)
+			if (subscene_return[subscene_return.length - 1] != current_index) {
+				variable_scopes.unshift({})
 				subscene_return.push(current_index)
+			}
 			subscene_change = scene
 		}
 		return token(true)
