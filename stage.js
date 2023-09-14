@@ -116,7 +116,7 @@ function text_format(text, parent_element) {
 					while (text[++i] && text[i] != '>') sym += text[i]
 					var ret
 					for (var tok of parse_expression(sym + '\n'))
-						ret = get_value(tok)
+						ret = get_value(tok, 'string')
 					c.innerHTML += ret
 					continue
 				case '\\': default: continue
@@ -184,7 +184,19 @@ function check(i, si) {
 
 function execute(i) {
 	var expr = ""
-	while (play[++i] && play[i] != '\n') expr += play[i]
+	var pc = 0
+	var str = ""
+	while (play[++i]) {
+		if (play[i] == str) {
+			str = ""
+		} else if (!str) {
+			if (play[i] == '(') pc++;
+			else if (play[i] == ')') pc--;
+			else if (play[i] == '"' || play[i] == "'") str = play[i];
+			else if (play[i] == '\n' && !pc) break;
+		}
+		expr += play[i]
+	}
 	expr += '\n'
 	current_index = i
 	var node = parse_expression(expr)
@@ -274,7 +286,8 @@ const coercion_functions = {
 		"string": (num) => { return ["string", num.toString()] }
 	},
 	"string": {
-		"number": (str) => { return ["number", Number(str)] }
+		"number": (str) => { return ["number", Number(str)] },
+		"symbol": (str) => { return ["symbol", str] }
 	}
 }
 
@@ -359,8 +372,8 @@ const funcs = {
 		return ['number', first]
 	}],
 	"/": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
-		for (var num of rest) dividend /= num
-		return ['number', first]
+		for (var num of divisor) dividend /= num
+		return ['number', dividend]
 	}],
 	"%": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
 		return ['number', ((dividend % divisor) + divisor) % divisor]
@@ -394,9 +407,11 @@ const funcs = {
 		return res
 	}],
 	"do": [[], (args) => {
-		for (var a of args)
-			res = get_value(a, 'any')
-		return token(true)
+		for (var a of args) {
+			val = get_value(a, 'any')
+			if (Array.isArray(val)) execute_function("do", val)
+		}
+		return ['bool', true]
 	}],
 	"abs": [[["num", "number"]], (args, num) => {
 		return ['number', Math.abs(num)]
@@ -521,7 +536,7 @@ const funcs = {
 		}
 		return ['bool', true]
 	}],
-	"scene-push": [[["scene-name", "string"]], (args, scene_name) => {
+	"scene-change": [[["scene-name", "string"]], (args, scene_name) => {
 		var scene = scenes[scene_name]
 		if (!scene) console.log("WARN: Invalid scene", scene_name, 'string')
 		scene_stack = []
@@ -536,19 +551,19 @@ const funcs = {
 		}
 		var min = get_value(a, 'number')
 		var max = get_value(args[1], 'number')
-		return token(Math.floor(Math.random() * (max - min + 1) + min))
+		return ['number', Math.floor(Math.random() * (max - min + 1) + min)]
 	}],
 	"length": [[], (args) => {
 		var l = get_value(args[0], 'any')
-		if (l.length) return token(l.length)
-		return token(false)
+		if (l.length) return ['number', l.length]
+		return ['bool', false]
 	}],
 	"del": [[], (args) => {
 		var tok = get_token(args[0])
 		if (tok[0] == 'reference') {
 			var lst = resolve_token(tok[1][0])[1]
 			lst.splice(tok[1][1], 1)
-			return token(true)
+			return ['bool', true]
 		} else if (tok[0] == 'symbol') {
 			var reslv = resolve_token(tok)
 			if (reslv[0] == 'reference') {
@@ -559,9 +574,9 @@ const funcs = {
 				tok = reslv
 			}
 			delete variables[tok[1]]
-			return token(true)
+			return ['bool', true]
 		}
-		return token(false)
+		return ['bool', false]
 	}],
 }
 
