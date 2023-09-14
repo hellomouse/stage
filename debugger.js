@@ -46,27 +46,22 @@ subscene_change_hook = (ind) => {
 scene_process_start_hook = (ind) => {
 	subscene_changes = {}
 }
-
-let original_set = functions["set"]
-functions["set"] = (...args) => {
-	var ret
-	var sym = get_token(args[0])
-	ret = original_set(sym, args[1])
-	var v = sym[1]
-	if (v == 'loop_max')
-		loop_max = get_value(sym, 'number')
-	if (!variable_track[v]) {
+var original_set = this.set_var
+set_var = (variable, value) => {
+	var ret = original_set(variable, value)
+	if (variable == 'loop_max')
+		loop_max = get_value(value, 'number')
+	if (!variable_track[variable]) {
 		var d = document.createElement("div")
 		d.className = "variable"
-		d.innerText = `${v}: ${humanify_token(ret)}`
+		d.innerText = `${variable}: ${humanify_token(ret)}`
 		debug_vars.appendChild(d)
-		variable_track[v] = d
+		variable_track[variable] = d
 	} else {
-		variable_track[v].innerText = `${v}: ${humanify_token(ret)}`
+		variable_track[variable].innerText = `${variable}: ${humanify_token(ret)}`
 	}
 	return ret
 }
-
 
 window.onload = e => {
 	debug_vars = document.getElementById("variables")

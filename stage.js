@@ -156,9 +156,9 @@ function evaluate(i, si) {
 	var node = parse_expression(expr)
 	var result
 	for (var n of node)
-		result = resolve_token(n, 'any')
+		result = resolve_token(n)
 	if (si && get_value(result)) enter_subscene(si)
-	else if (!si) functions["set"](['symbol', 'status'], result)
+	else if (!si) set_var("status", result)
 	return i
 }
 
@@ -166,7 +166,7 @@ function check(i, si) {
 	var t = ""
 	while (play[++i] && play[i] != '\n') t += play[i]
 	current_index = i
-	var result = get_value(functions["="](token(t), ['symbol', 'status']), 'bool')
+	var result = get_value(execute_function("=", [["symbol", "status"], token(t)]), 'bool')
 	if (result) enter_subscene(si)
 	return i
 }
@@ -226,7 +226,7 @@ function input_check(e, si, depth) {
 	}
 	if (e.key == "Enter") {
 		e.preventDefault()
-		functions["set"](['symbol', 'status'], ['string', `${e.target.value}`])
+		set_var("status", ['string', e.target.value])
 		action_depth++
 		output.appendChild(document.createElement("hr"))
 		stop = false
@@ -238,31 +238,56 @@ function input_check(e, si, depth) {
 /* EXPRESSIONS */
 /* ----------- */
 
-function token(token) {
-	const string_re = /^('.*')|(".*")$/
+function token(tok) {
+	const string_re = /(^'.*'$)|(^".*"$)/
+	const pair_re = /^.+:.+$/
 	const bool_re = /^(yes|no|true|false|t|f)$/
-	if (Array.isArray(token))
-		return ["list", token]
-	if (string_re.exec(token))
-		return ["string", token.slice(1, -1)]
-	if (!isNaN(token) && !isNaN(parseFloat(token)))
-		return ["number", Number(token)]
-	if (bool_re.exec(token)) {
-		if (typeof token == "boolean")
-			return ["bool", token]
-		return ["bool", token.startsWith("t") || token.startsWith("y")]
+	if (Array.isArray(tok))
+		return ["list", tok]
+	if (string_re.exec(tok))
+		return ["string", tok.slice(1, -1)]
+	if (pair_re.exec(tok))
+		return ["pair", tok.split(":").map(token)]
+	if (!isNaN(tok) && !isNaN(parseFloat(tok)))
+		return ["number", Number(tok)]
+	if (bool_re.exec(tok)) {
+		if (typeof tok == "boolean")
+			return ["bool", tok]
+		return ["bool", tok.startsWith("t") || tok.startsWith("y")]
 	}
-	return ["symbol", token]
+	return ["symbol", tok]
+}
+
+const coercion_functions = {
+	"number": {
+		"string": (num) => { return ["string", num.toString()] }
+	},
+	"string": {
+		"number": (str) => { return ["number", Number(str)] }
+	}
+}
+
+function coerce_token(v, type) {
+	if (v[0] == type) // v already type
+		return v
+	var coerce = v
+	if (coercion_functions[v[0]] && coercion_functions[v[0]][type])
+		coerce = coercion_functions[v[0]][type](v[1])
+	if (coerce[0] != type)
+		console.log("WARN: Unable to coerce", coerce[0], "to type", type)
+	return coerce
 }
 
 function get_value(v, type) {
 	if (!v)
 		return null
+	if (type == 'token')
+		return v
 	var vt = v[0]
 	if (type != 'symbol' || vt == 'function')
 		v = resolve_token(resolve_token(v))
 	if (vt != type && type != 'any')
-		console.log("WARN: Incorrect value type.")
+		v = coerce_token(v, type)
 	return v[1]
 }
 
@@ -270,7 +295,7 @@ function get_token(v) {
 	if (!v)
 		return null
 	if (v[0] == 'function')
-		v = functions[v[1][0]](...v[1][1])
+		v = execute_function(v[1][0], v[1][1])
 	return v
 }
 
@@ -282,7 +307,7 @@ function resolve_token(v) {
 	if (v[0] == 'symbol')
 		v = variables[v[1]] ? variables[v[1]] : ['number', 0]
 	if (v[0] == 'function')
-		v = functions[v[1][0]](...v[1][1])
+		v = execute_function(v[1][0], v[1][1])
 	return v
 }
 
@@ -296,6 +321,8 @@ function humanify_token(v) {
 			return `(${v[1][0]} ${v[1][1].map(x => humanify_token(x)).join(" ")})`
 		case 'list':
 			return `#(${v[1].map(x => humanify_token(x)).join(" ")})`
+		case 'pair':
+			return `${humanify_token(v[1][0])}:${humanify_token(v[1][0])}`
 		case 'bool':
  		case 'string':
 		case 'number':
@@ -303,151 +330,194 @@ function humanify_token(v) {
 	}
 }
 
-const functions = {
-	"+": (...args) => {
-		var r = 0
-		for (var a of args) r += get_value(a, 'number')
-		return token(r)
-	},
-	"-": (...args) => {
-		var r = get_value(args[0], 'number')
-		for (var i = 1; i < args.length; i++) r -= get_value(args[i], 'number')
-		return token(r)
-	},
-	"*": (...args) => {
-		var r = 1
-		for (var a of args) r *= get_value(a, 'number')
-		return token(r)
-	},
-	"/": (...args) => {
-		var r = get_value(args[0], 'number')
-		for (var i = 1; i < args.length; i++) r /= get_value(args[i], 'number')
-		return token(r)
-	},
-	"%": (...args) => {
-		var a = get_value(args[0], 'number')
-		var n = get_value(args[1], 'number')
-		return token(((a % n) + n) % n) // modulo, not remainder
-	},
-	">": (...args) => {
-		return token(get_value(args[0], 'number') > get_value(args[1], 'number'))
-	},
-	"<": (...args) => {
-		return token(get_value(args[0], 'number') < get_value(args[1], 'number'))
-	},
-	"rem": (...args) => {
-		var a = get_value(args[0], 'number')
-		var n = get_value(args[1], 'number')
-		return token(a % n)
-	},
-	"get": (...args) => {
-		var res
+function set_var(variable, value) {
+	return variables[variable] = value
+}
+
+const funcs = {
+	"+": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var num of rest) first += num
+		return ['number', first]
+	}],
+	"-": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var num of rest) first -= num
+		return ['number', first]
+	}],
+	"*": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var num of rest) first *= num
+		return ['number', first]
+	}],
+	"/": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
+		for (var num of rest) dividend /= num
+		return ['number', first]
+	}],
+	"%": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
+		return ['number', ((dividend % divisor) + divisor) % divisor]
+	}],
+	">": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var n of rest) {
+			if (first <= n) return ['bool', false]
+			first = n
+		}
+		return ['bool', true]
+	}],
+	"<": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var n of rest) {
+			if (first >= n) return ['bool', false]
+			first = n
+		}
+		return ['bool', true]
+	}],
+	"=": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+		for (var n of rest)
+			if (first != n) return ['bool', false]
+		return ['bool', true]
+	}],
+	"rem": [[["dividend", "number"], ["divisor", "number"]], (args, dividend, divisor) => {
+		return ['number', dividend % divisor]
+	}],
+	"get": [[], (args) => {
+		var result
 		for (var a of args)
 			res = resolve_token(get_token(a))
 		return res
-	},
-	"do": (...args) => {
-		for (var a of args) {
-			var val = get_value(a, 'any')
-			if (Array.isArray(val)) functions["do"](...val)
-		}
+	}],
+	"do": [[], (args) => {
+		for (var a of args)
+			res = get_value(a, 'any')
 		return token(true)
-	},
-	"abs": (...args) => {
-		var r = get_value(args[0], 'number')
-		return token(Math.abs(r))
-	},
-	"floor": (...args) => {
-		var r = get_value(args[0], 'number')
-		return token(Math.floor(r))
-	},
-	"set": (...args) => {
-		var sym = get_token(args[0])
+	}],
+	"abs": [[["num", "number"]], (args, num) => {
+		return ['number', Math.abs(num)]
+	}],
+	"floor": [[["num", "number"]], (args, num) => {
+		return ['number', Math.floor(num)]
+	}],
+	"set": [[["sym", "token"], ["val", "token"]], (args, sym, val) => {
+		sym = get_token(sym)
+		val = resolve_token(val)
 		if (sym[0] == 'reference')
-			return resolve_token(sym[1][0])[1][sym[1][1]] = resolve_token(args[1])
-		return variables[get_value(sym, "symbol")] = resolve_token(args[1])
-	},
-	"sym": (...args) => {
-		return args[0]
-	},
-	"=": (...args) => {
-		var v1 = get_value(args[0], 'any')
-		var v2 = get_value(args[1], 'any')
-		return token(v1 == v2)
-	},
-	"reset": (...args) => {
+			return resolve_token(sym[1][0])[1][sym[1][1]] = val
+		return set_var(sym[1], val)
+	}],
+	"sym": [[["token", "token"]], (args, token) => {
+		return token
+	}],
+	"reset": [[], (args) => {
 		restart()
-		return token(true)
-	},
-	"return": (...args) => {
+		return ['bool', true]
+	}],
+	"return": [[], (args) => {
 		enter_scene(current_scene)
-		return token(true)
-	},
-	"back": (...args) => {
-		var val = get_value(args[0], 'number')
-		for (var i = 0; i < (val ? val : 1); i++)
+		return ['bool', true]
+	}],
+	"back": [[["count", "number"]], (args, count) => {
+		for (var i = 0; i < (count ? count : 1); i++)
 			action_stack.pop()
 		subscene_change = action_stack[action_stack.length - 1]
-		return token(true)
-	},
-	"not": (...args) => {
-		return token(!get_value(args[0], 'any'))
-	},
-	"and": (...args) => {
-		var r = 1
-		for (var a of args) {
-			r = r && get_value(a, 'any')
-			if (!r) break
-		}
-		return token(r)
-	},
-	"or": (...args) => {
-		var r = false
-		for (var a of args) {
-			r = r || get_value(a, 'any')
-			if (r) break
-		}
-		return token(r)
-	},
-	"+1": (...args) => {
-		var val = functions["+"](args[0], token(1))
-		return functions["set"](args[0], val)
-	},
-	"-1": (...args) => {
-		var val = functions["-"](args[0], token(1))
-		return functions["set"](args[0], val)
-	},
-	"print": (...args) => {
+		return ['bool', true]
+	}],
+	"not": [[["value", "any"]], (args, value) => {
+		return ['bool', !value]
+	}],
+	"and": [[], (args) => {
+		for (var n of args)
+			if (!(1 && get_value(n, 'any'))) return ['bool', false]
+		return ['bool', true]
+	}],
+	"or": [[], (args) => {
+		for (var n of args)
+			if (0 || get_value(n, 'any')) return ['bool', true]
+		return ['bool', false]
+	}],
+	"print": [[["values", "#any"]], (args, values) => {
 		var out = ""
-		for (var a of args) out += String(get_value(a, 'any'))
+		for (var v of values) out += String(v)
 		insert_text(out)
-		return token(true)
-	},
-	"concat": (...args) => {
+		return ['bool', true]
+	}],
+	"concat": [[["strings", "#string"]], (args, strings) => {
 		var out = ""
-		for (var a of args) out += String(get_value(a, 'any'))
+		for (var s of strings) out += s
 		return ['string', out]
-	},
-	"if": (...args) => {
-		var condition = get_value(args[0], 'any')
-		return condition ? resolve_token(args[1]) : resolve_token(args[2])
-	},
-	"list": (...args) => {
-		return token(args.map(x => resolve_token(x)))
-	},
-	"push": (...args) => {
-		var list = get_value(args[0], 'list')
-		for (var i = 1; i < args.length; i++)
-			list.push(resolve_token(args[i]))
-		return functions["set"](args[0], token(list))
-	},
-	"pop": (...args) => {
-		var list = get_value(args[0], 'list')
+	}],
+	"if": [[["expr", "any"],["t", "token"],["f", "token"]], (args, expr, t, f) => {
+		return expr ? resolve_token(t) : resolve_token(f)
+	}],
+	"list": [[], (args) => {
+		return ['list', args.map(x => resolve_token(x))]
+	}],
+	"def-fun": [[["name", "symbol"], ["args", "list"], ["func", "#token"]], (_, name, args, func) => {
+		define_function(name, args, func)
+		return ['bool', true]
+	}],
+	"push": [[["list", "'list"],["values", "#token"]], (args, list, values) => {
+		for (var v of values) list.push(resolve_token(v))
+		return set_var(args[0], list)
+	}],
+	"pop": [[["list", "list"]], (args, list) => {
 		var ret = list.pop()
-		functions["set"](args[0], token(list))
-		return ret ? ret : token(false)
-	},
-	"rand": (...args) => {
+		return ret ? ret : ['bool', false]
+	}],
+	"first": [[["list", "'list"]], (args, list) => {
+		return ['reference', [get_token(args[0]), 0]]
+	}],
+	"last": [[["list", "'list"]], (args, list) => {
+		if (!list.length) return ['bool', false]
+		return ['reference', [get_token(args[0]), list.length - 1]]
+	}],
+	"rest": [[["list", "list"]], (args, list) => {
+		return ['list', list.slice(1)]
+	}],
+	"index": [[["list", "'list"], ["index", "number"]], (args, list, index) => {
+		var i = Math.min(Math.max(index, 0), list.length - 1)
+		return ['reference', [get_token(args[0]), i]]
+	}],
+	"stop": [[], (args) => {
+		subscene_change = 0
+		subscene_return = []
+		stop = true
+		return ['bool', true]
+	}],
+	"clear": [[], (args) => {
+		output.replaceChildren()
+		return ['bool', true]
+	}],
+	"scene-pop": [[], (args) => {
+		var scene = scene_stack.pop()
+		if (scene != undefined) enter_scene(scene)
+		else console.log("WARN: tried to pop without scenes in stack.")
+		return ['bool', true]
+	}],
+	"scene-push": [[["scene-name", "string"]], (args, scene_name) => {
+		scene_stack.push(current_scene)
+		var scene = scenes[scene_name]
+		if (!scene) console.log("WARN: Invalid scene", scene_name)
+		enter_scene(scene)
+		return ['bool', true]
+	}],
+	"scene-jump": [[["scene-name", "string"]], (args, scene_name) => {
+		var scene = scenes[scene_name]
+		if (!scene) console.log("WARN: Invalid scene", scene_name, 'string')
+		if (subscene_change) {
+			// scene change already in same expression
+			subscene_return.push(scene)
+		} else {
+			// bit of a hack.
+			if (subscene_return[subscene_return.length - 1] != current_index)
+				subscene_return.push(current_index)
+			subscene_change = scene
+		}
+		return ['bool', true]
+	}],
+	"scene-push": [[["scene-name", "string"]], (args, scene_name) => {
+		var scene = scenes[scene_name]
+		if (!scene) console.log("WARN: Invalid scene", scene_name, 'string')
+		scene_stack = []
+		enter_scene(scene)
+		return ['bool', true]
+	}],
+	"rand": [[], (args) => {
 		var a = resolve_token(args[0])
 		if (a[0] == 'list') {
 			var l = get_value(args[0], 'list')
@@ -456,28 +526,13 @@ const functions = {
 		var min = get_value(a, 'number')
 		var max = get_value(args[1], 'number')
 		return token(Math.floor(Math.random() * (max - min + 1) + min))
-	},
-	"first": (...args) => {
-		var l = get_token(args[0])
-		return ['reference', [l, 0]]
-	},
-	"last": (...args) => {
-		var l = get_token(args[0])
-		var lst = resolve_token(l)
-		if (!lst.length) return token(false)
-		return ['reference', [l, lst.length - 1]]
-	},
-	"rest": (...args) => {
-		var lst = get_value(args[0], 'list')
-		return token(lst.slice(1))
-	},
-	"index": (...args) => {
-		var l = get_token(args[0])
-		var lst = resolve_token(l)
-		var i = Math.min(Math.max(get_value(args[1], 'number'), 0), lst[1].length - 1)
-		return ['reference', [l, i]]
-	},
-	"del": (...args) => {
+	}],
+	"length": [[], (args) => {
+		var l = get_value(args[0], 'any')
+		if (l.length) return token(l.length)
+		return token(false)
+	}],
+	"del": [[], (args) => {
 		var tok = get_token(args[0])
 		if (tok[0] == 'reference') {
 			var lst = resolve_token(tok[1][0])[1]
@@ -496,57 +551,138 @@ const functions = {
 			return token(true)
 		}
 		return token(false)
-	},
-	"length": (...args) => {
-		var l = get_value(args[0], 'any')
-		if (l.length) return token(l.length)
-		return token(false)
-	},
-	"stop": (...args) => {
-		subscene_change = 0
-		subscene_return = []
-		stop = true
-		return token(true)
-	},
-	"clear": (...args) => {
-		output.replaceChildren()
-		return token(true)
-	},
-	"scene-pop": (...args) => {
-		var scene = scene_stack.pop()
-		if (scene != undefined) enter_scene(scene)
-		else console.log("WARN: tried to pop without scenes in stack.")
-		return token(true)
-	},
-	"scene-push": (...args) => {
-		scene_stack.push(current_scene)
-		var scene = scenes[get_value(args[0], 'string')]
-		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
-		enter_scene(scene)
-		return token(true)
-	},
-	"scene-jump": (...args) => {
-		var scene = scenes[get_value(args[0], 'string')]
-		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
-		if (subscene_change) {
-			// scene change already in same expression
-			subscene_return.push(scene)
-		} else {
-			// bit of a hack.
-			if (subscene_return[subscene_return.length - 1] != current_index)
-				subscene_return.push(current_index)
-			subscene_change = scene
-		}
-		return token(true)
-	},
-	"scene-change": (...args) => {
-		var scene = scenes[get_value(args[0], 'string')]
-		if (!scene) console.log("WARN: Invalid scene", get_value(args[0], 'string'))
-		scene_stack = []
-		enter_scene(scene)
-		return token(true)
-	},
+	}],
 }
+
+define_function("+1", "var:symbol", parse_expression("(set var (+ var 1))"))
+define_function("-1", "var:symbol", parse_expression("(set var (- var 1))"))
+
+function recursive_find_args(func, args) {
+	var out = {}
+	for (var i in func) {
+		var e = func[i]
+		var et = e[0]
+		var o
+		switch (et) {
+			case 'symbol':
+				if (args.includes(e[1])) {
+					if (out[e[1]]) out[e[1]].push([func, i])
+					else out[e[1]] = [[func, i]]
+				}
+				break
+			case 'function':
+				o = recursive_find_args(e[1][1], args)
+				break
+			case 'list':
+				o = recursive_find_args(e[1], args)
+				break
+		}
+		if (o) {
+			for (var k in o) {
+				if (out[k]) out[k] = out[k].concat(o[k])
+				else out[k] = o[k]
+			}
+		}
+	}
+	return out
+}
+
+function define_function(name, args, func) {
+	var args = args instanceof Array ? args : parse_expression(args + '\n')
+	var definition_args = []
+	for (var p of args) definition_args.push([p[1][0][1], p[1][1][1]])
+	if (func instanceof Array) {
+		funcs[name] = [definition_args, func, recursive_find_args(func, definition_args.map((a) => {return a[0]}))]
+	} else {
+		funcs[name] = [definition_args, func]
+	}
+}
+
+function execute_function(name, args) {
+	var func = funcs[name]
+	if (!func) return null
+	// internal
+	if (func[1] instanceof Function) {
+		var ia = []
+		for (var i in func[0]) {
+			if (func[0][i][1][0] == '#') {
+				var il = []
+				var lt = func[0][i][1].slice(1)
+				if (i == func[0].length - 1) {
+					if (args.length == func[0].length && lt != 'token') {
+						var l = resolve_token(args[i])
+						if (l[0] == 'list') {
+							var el = []
+							for (var e of l[1])
+								el.push(get_value(e, lt))
+							ia.push(el)
+							continue
+						}
+					}
+					for (var j = i; j < args.length; j++)
+						il.push(get_value(args[j], lt))
+				} else {
+					var l = get_value(args[i], 'list')
+					for (var e of l[1]) il.push(get_value(e, lt))
+				}
+				ia.push(il)
+				continue
+			} else if (func[0][i][1][0] == '\'') {
+				var tk = get_token(args[i])
+				if (tk[0] != 'symbol') console.log("WARN: Invalid variable argument for function", name)
+				var tt = func[0][i][1].slice(1)
+				ia.push(get_value(tk, tt))
+				continue
+			}
+			ia.push(get_value(args[i], func[0][i][1]))
+		}
+		return func[1](args, ...ia)
+	} else {
+		var ia = {}
+		for (var i in func[0]) {
+			if (func[0][i][1][0] == '#') {
+				var il = []
+				var lt = func[0][i][1].slice(1)
+				if (i == func[0].length - 1) {
+					if (args.length == func[0].length && lt != 'token') {
+						var l = resolve_token(args[i])
+						if (l[0] == 'list') {
+							ia[func[0][i][0]] = l
+							continue
+						}
+					}
+					for (var j = i; j < args.length; j++)
+						il.push([lt, get_value(args[j], lt)])
+				} else {
+					var l = get_value(args[i], 'list')
+					for (var e of l[1]) il.push([lt, get_value(e, lt)])
+				}
+				ia[func[0][i][0]] = ['list', il]
+				continue
+			} else if (func[0][i][1][0] == '\'') {
+				var tk = get_token(args[i])
+				if (tk[0] != 'symbol') console.log("WARN: Invalid variable argument for function", name)
+				var tt = func[0][i][1].slice(1)
+				if (resolve_token(tk)[0] != tt) console.log("WARN: Invalid variable argument for function", name)
+				ia[func[0][i][0]] = tk
+				continue
+			}
+			ia[func[0][i][0]] = [func[0][i][1], get_value(args[i], func[0][i][1])]
+		}
+		for (var e in ia)
+		for (var i of func[2][e])
+			i[0][i[1]] = ia[e]
+		var res
+		for (var n of func[1])
+			res = resolve_token(n)
+		return res
+	}
+}
+
+/*
+const functions = {
+}
+*/
 
 function parse_expression(expr) {
 	var parents = []
@@ -568,7 +704,8 @@ function parse_expression(expr) {
 				if (lst)
 					n = ['list', []]
 				else
-					n = ['function', [functions[buffer] ? buffer : "", []]]
+					n = ['function', [funcs[buffer] ? buffer : "", []]]
+				lst = false
 				if (current_node) {
 					parent_stack.push(current_node)
 					switch (current_node[0]) {
@@ -586,7 +723,7 @@ function parse_expression(expr) {
 				if (buffer) {
 					if (current_node[0] == 'function' && !current_node[1][0]) {
 						current_node[1][0] = buffer
-						if (!functions[buffer]) console.log("WARN: Invalid function", buffer)
+						if (!funcs[buffer]) console.log("WARN: Invalid function", buffer)
 					} else {
 						var tk = token(buffer)
 						if (sym) {
@@ -617,7 +754,7 @@ function parse_expression(expr) {
 						case 'function':
 							if (!current_node[1][0]) {
 								current_node[1][0] = buffer
-								if (!functions[buffer]) console.log("WARN: Invalid function", buffer)
+								if (!funcs[buffer]) console.log("WARN: Invalid function", buffer)
 							} else {
 								current_node[1][1].push(tk)
 							}
@@ -632,7 +769,7 @@ function parse_expression(expr) {
 			case "'": sym = true; break
 			case "#": lst = true; break
 			case '"': string = c
-			default:
+			default: if (lst) { buffer += '#'; lst = false }
 				buffer += c
 		}
 	}
