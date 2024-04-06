@@ -367,7 +367,7 @@ function humanify_token(v) {
 			return `#(${v[1].map(x => humanify_token(x)).join(" ")})`
 		case Type.pair:
 			return `${humanify_token(v[1][0])}:${humanify_token(v[1][0])}`
-		case Type.bool:
+		case Type.boolean:
  		case Type.string:
 		case Type.number:
 			return v[1]
