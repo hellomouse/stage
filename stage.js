@@ -300,12 +300,12 @@ function token(tok) {
 }
 
 const coercion_functions = {
-	"number": {
-		"string": (num) => { return [Type.string, num.toString()] }
+	[Type.number]: {
+		[Type.string]: (num) => { return [Type.string, num.toString()] }
 	},
-	"string": {
-		"number": (str) => { return !isNaN(str) && !isNaN(parseFloat(str)) ? [Type.string, Number(str)] : null },
-		"symbol": (str) => { return [Type.symbol, str] }
+	[Type.string]: {
+		[Type.number]: (str) => { return !isNaN(str) && !isNaN(parseFloat(str)) ? [Type.string, Number(str)] : null },
+		[Type.symbol]: (str) => { return [Type.symbol, str] }
 	}
 }
 
@@ -493,11 +493,11 @@ const funcs = {
 	"list": [[], (args) => {
 		return [Type.list, args.map(x => resolve_token(x))]
 	}],
-	"def-fun": [[["name", Type.symbol], ["args", Type.list], ["func", Type.string|TypeMod.list]], (_, name, args, func) => {
+	"def-fun": [[["name", Type.symbol], ["args", Type.list], ["func", Type.token|TypeMod.list]], (_, name, args, func) => {
 		define_function(name, args, func)
 		return [Type.boolean, true]
 	}],
-	"push": [[["list", Type.list|TypeMod.symbol],["values", Type.string|TypeMod.list]], (args, list, values) => {
+	"push": [[["list", Type.list|TypeMod.symbol],["values", Type.token|TypeMod.list]], (args, list, values) => {
 		for (var v of values) list.push(resolve_token(v))
 		return set_var(args[0], list)
 	}],
