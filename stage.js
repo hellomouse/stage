@@ -398,14 +398,14 @@ const funcs = {
 	"%": [[["dividend", Type.number], ["divisor", Type.number|TypeMod.list]], (args, dividend, divisor) => {
 		return [Type.number, ((dividend % divisor) + divisor) % divisor]
 	}],
-	">": [[["first",Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
+	">": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest) {
 			if (first <= n) return [Type.boolean, false]
 			first = n
 		}
 		return [Type.boolean, true]
 	}],
-	"<": [[["first",Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
+	"<": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest) {
 			if (first >= n) return [Type.boolean, false]
 			first = n
@@ -725,6 +725,23 @@ function execute_function(name, args) {
 	}
 }
 
+function flatten_expression_tree(tree) {
+	switch (tree[0]) {
+		case Type.function:
+			console.log(Type.function + ":" +tree[1][0])
+			console.log(Type.list + ":" + tree[1][1].length)
+			tree[1][1].forEach((x) => flatten_expression_tree(x))
+			break
+		case Type.symbol:
+			console.log(Type.symbol + ":" + tree[1])
+			break
+		case Type.number:
+			console.log(Type.number + ":" + tree[1])
+			break
+		default: console.log("Unknown type: " + tree[0])
+	}
+}
+
 function parse_expression(expr) {
 	var parents = []
 	var parent_stack = []
@@ -750,8 +767,8 @@ function parse_expression(expr) {
 				if (current_node) {
 					parent_stack.push(current_node)
 					switch (current_node[0]) {
-						case Type.function: current_node[1][1].push(sym ? [Type.function, [Type.symbol, [n]]] : n); break
-						case Type.list: current_node[1].push(sym ? [Type.function, [Type.symbol, [n]]] : n); break
+						case Type.function: current_node[1][1].push(sym ? [Type.function, ['sym', [n]]] : n); break
+						case Type.list: current_node[1].push(sym ? [Type.function, ['sym', [n]]] : n); break
 						default: console.log("WARN: Invalid parent type", current_node[0])
 					}
 				} else {
@@ -768,7 +785,7 @@ function parse_expression(expr) {
 					} else {
 						var tk = token(buffer)
 						if (sym) {
-							tk = [Type.function, [Type.symbol, [tk]]]
+							tk = [Type.function, ['sym', [tk]]]
 							sym = false
 						}
 						switch (current_node[0]) {
