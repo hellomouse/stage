@@ -210,7 +210,7 @@ function execute(i) {
 		} else if (!str) {
 			if (play[i] == '(') pc++;
 			else if (play[i] == ')') pc--;
-			else if (play[i] == '"' || play[i] == "'") str = play[i];
+			else if (play[i] == '"') str = play[i];
 			else if (play[i] == '\n' && !pc) break;
 		}
 		expr += play[i]
@@ -329,7 +329,7 @@ function get_value(v, type) {
 		return v
 	var vt = v[0]
 	if (type != Type.symbol || vt == Type.function)
-		v = resolve_token(resolve_token(v))
+		v = resolve_token(v)
 	if (vt != type && type != Type.any)
 		v = coerce_token(v, type)
 	return v[1]
@@ -636,7 +636,7 @@ function recursive_find_args(func, args) {
 function define_function(name, args, func) {
 	var args = args instanceof Array ? args : parse_expression(args + '\n')
 	var definition_args = []
-	for (var p of args) definition_args.push([Type[p[1][0][1]], p[1][1][1]])
+	for (var p of args) definition_args.push([p[1][0][1], Type[p[1][1][1]]])
 	if (func instanceof Array) {
 		funcs[name] = [definition_args, func, recursive_find_args(func, definition_args.map((a) => {return a[0]}))]
 	} else {
@@ -801,7 +801,7 @@ function parse_expression(expr) {
 				if (!buffer) break
 				var tk = token(buffer)
 				if (sym) {
-					tk = [Type.function, [Type.sym, [tk]]]
+					tk = [Type.function, ['sym', [tk]]]
 					sym = false
 				}
 
