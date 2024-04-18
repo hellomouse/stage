@@ -26,6 +26,10 @@ function run() {
 	parse_play()
 }
 
+function save() {
+	localStorage.setItem("stage-debugger-autosave", editor.value)
+}
+
 // loop detection
 let subscene_changes = {}
 let loop_max = 1000
@@ -68,6 +72,7 @@ window.onload = e => {
 	container = document.getElementById("container")
 	output = document.getElementById("output") 
 	editor = document.getElementById("editor")
+	editor.value = localStorage.getItem("stage-debugger-autosave") ?? ""
 	editor.addEventListener('keydown', function(e) {
 		if (e.key == "Tab") {
 			e.preventDefault()
@@ -77,4 +82,7 @@ window.onload = e => {
 			this.selectionStart = this.selectionEnd = s + 1;
 		}
 	})
+	setInterval(() => {
+		save()
+	}, 1000 * 60) // every minute
 }

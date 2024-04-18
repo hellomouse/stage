@@ -696,8 +696,8 @@ function execute_function(name, args) {
 			ia[func[0][i][0]] = [func[0][i][1], get_value(args[i], func[0][i][1])]
 		}
 		for (var e in ia)
-		for (var i of func[2][e])
-			i[0][i[1]] = ia[e]
+			for (var i of func[2][e])
+				i[0][i[1]] = ia[e]
 		var res
 		for (var n of func[1])
 			res = resolve_token(n)
