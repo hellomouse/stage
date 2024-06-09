@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const stage_version = "20240609";
+let play_chunks = {};
+
+let sources = {};
+let current_source;
+
 let scene_stack = [];
 let action_stack = [];
 let scenes = {};
@@ -40,6 +46,7 @@ let scene_process_start_hook = (ind) => {}
 /* ------ */
 
 function process_scene(ind) {
+	play = sources[current_source]
 	// DEBUGGER HOOK
 	scene_process_start_hook(ind)
 	var sc = 0
@@ -49,8 +56,10 @@ function process_scene(ind) {
 		if (subscene_change) {
 			// DEBUGGER HOOK
 			subscene_change_hook(subscene_change)
-			i = subscene_change
-			subscene_change = 0
+			i = subscene_change.index
+			current_source = subscene_change.source
+			play = sources[current_source]
+			subscene_change = null
 		}
 		var c = play[i]
 		if (sc) {
@@ -66,10 +75,16 @@ function process_scene(ind) {
 			case '[': i = input(i); break
 			case '!': i = execute(i); break
 			case '/': i = comment(i); break
-			case '@': action_stack.push(i + 1); break
+			case '@': action_stack.push({source: current_source, index: i + 1}); break
 			case '{': sc++; si = i; break
 			case '}': case '.':
-				if (subscene_return.length) { i = subscene_return.pop(); break; }
+				if (subscene_return.length) {
+					var s = subscene_return.pop();
+					i = s.index;
+					current_source = s.source
+					play = sources[current_source]
+					break;
+				}
 				break out
 		}
 	}
@@ -92,7 +107,7 @@ function input(i) {
 	input.classList.add("text-input")
 	input.type = "text"
 	input.placeholder = label
-	input.setAttribute("onkeydown", `input_check(event, ${i}, ${action_depth})`)
+	input.setAttribute("onkeydown", `input_check(event, ${i}, ${action_depth}, "${current_source}")`)
 	output.appendChild(input)
 	stop = true // blocking
 	return i
@@ -150,10 +165,10 @@ function action(i, si) {
 	text_format(text, a)
 	a.classList.add("action")
 	if (!si) { // blocking action.
-		a.href = `javascript:execute_action(${i}, ${action_depth}, true)`
+		a.href = `javascript:execute_action(${i}, ${action_depth}, "${current_source}", true)`
 		stop = true
 	} else {
-		a.href = `javascript:execute_action(${si}, ${action_depth})`
+		a.href = `javascript:execute_action(${si}, ${action_depth}, "${current_source}")`
 	}
 	output.appendChild(a)
 	return i
@@ -215,16 +230,19 @@ function comment(i) {
 }
 
 function enter_subscene(si) {
-	subscene_return.push(current_index)
-	subscene_change = si
+	var ss = {source: current_source, index: si}
+	subscene_return.push(ss)
+	subscene_change = ss
 }
 
-function enter_scene(si) {
+function enter_scene(s) {
 	stop = true
 	Promise.resolve().then(() => {
+		var si = s.index
+		current_source = s.source
 		stop = false
-		current_scene = si
-		action_stack = [si]
+		current_scene = s
+		action_stack = [{source: s.source, index: si}]
 		subscene_return = []
 		current_index = 0
 		subscene_change = 0
@@ -232,23 +250,25 @@ function enter_scene(si) {
 	});
 }
 
-function execute_action(si, depth, blocking = false) {
+function execute_action(si, depth, source, blocking = false) {
 	if (depth != action_depth)
 		return
 	action_depth++
 	output.appendChild(document.createElement("hr"))
 	stop = false
-	if (!blocking) action_stack.push(si)
+	current_source = source
+	if (!blocking) action_stack.push({source: source, index: si})
 	process_scene(si)
 }
 
-function input_check(e, si, depth) {
+function input_check(e, si, depth, source) {
 	if (depth != action_depth) {
 		e.preventDefault()
 		return
 	}
 	if (e.key == "Enter") {
 		e.preventDefault()
+		current_source = source
 		set_var("status", ['string', e.target.value])
 		action_depth++
 		output.appendChild(document.createElement("hr"))
@@ -530,8 +550,9 @@ const funcs = {
 			subscene_return.push(scene)
 		} else {
 			// bit of a hack.
-			if (subscene_return[subscene_return.length - 1] != current_index)
-				subscene_return.push(current_index)
+			var ss = subscene_return[subscene_return.length - 1]
+			if (!ss || ss.index != current_index)
+				subscene_return.push({source: current_source, index: current_index})
 			subscene_change = scene
 		}
 		return ['bool', true]
@@ -807,7 +828,7 @@ function restart() {
 	action_depth = 0
 	output.replaceChildren()
 	scene_stack = []
-	enter_scene(scenes["start"] ? scenes["start"] : 0)
+	enter_scene(scenes["start"])
 }
 
 /* -------------- */
@@ -829,20 +850,80 @@ function submit_file(e) {
 }
 
 function parse_play() {
+	play_chunks = {
+		"STGE": {},
+		"INFO": {},
+		"SCNE": {},
+		"EXTS": {}
+	}
+	var sind = 0
+	var eind = play.indexOf("\n")
+	var line = play.substring(sind, eind)
+	sind = eind + 1
+	if (line != "STAGE PLAY") {
+		console.log(`ERR: 'STAGE PLAY' is not 'STAGE PLAY': ${line}`)
+		return
+	}
+	var chunk = ""
+	var chunk_end = ""
+	while (line != "END") {
+		eind = play.indexOf("\n", sind)
+		line = play.substring(sind, eind).trim()
+		sind = eind + 1
+		if (chunk) {
+			if (line == chunk_end) {
+				chunk = ""
+				continue
+			}
+			line = line.split(":")
+			var f = line[0]
+			var v = line[1]
+			play_chunks[chunk][f] = v.trim()
+		} else {
+			if (play_chunks[line]) {
+				chunk = line
+				chunk_end = line.split("").reverse().join("") // replace with something better.
+			}
+		}
+	}
+
+	if (play_chunks.STGE?.version) {
+		// Check version
+	}
+
+	sources["play"] = play
+	if (Object.keys(play_chunks.SCNE).length <= 0) {
+		console.log("WARN: SCNE chunk missing or empty, starting from zero.")
+		scenes["start"] = sind
+	} else {
+		for (var k of Object.keys(play_chunks.SCNE)) {
+			var i = parseInt(play_chunks.SCNE[k]) + sind
+			scenes[k] = {source: "play", index: i}
+			console.log(`INFO: Scene ${k} at ${i} in 'play'.`)
+		}
+	}
+
+	document.getElementById("load")?.remove()
+	restart()
+}
+
+function parse_legacy_play() {
 	var index = -1
 	variables = {}
 	action_depth = 0
 	output.replaceChildren()
 	scene_stack = []
 	scenes = []
+	sources["play"] = play
 	while ((index = play.indexOf("START ", index + 1)) != -1) {
 		var buffer = ""
 		index += 5
 		while (play[++index] != '\n') buffer += play[index]
-		scenes[buffer] = index;
+		scenes[buffer] = {source: "play", index: 0};
 	}
+	if (!scenes["start"]) scenes["start"] = {source: "play", index: 0}
 	document.getElementById("load")?.remove()
-	enter_scene(scenes["start"] ? scenes["start"] : 0)
+	restart()
 }
 
 function play_file(file) {
@@ -850,7 +931,9 @@ function play_file(file) {
 	reader.readAsText(file)
 	reader.onload = readerEvent => {
 		play = readerEvent.target.result
-		parse_play()
+		var magic = play.substring(0, 10)
+		if (magic == "STAGE PLAY") parse_play()
+		else parse_legacy_play()
 	}
 }
 

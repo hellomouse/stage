@@ -14,20 +14,58 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+let scene_select
 let editor
 let debug_vars
 let variable_track = {}
 
-function run() {
+let editor_scene = "start"
+let editor_sources = {}
+
+function run(scene) {
 	for (var v in variable_track)
 		variable_track[v].remove()
 	variable_track = {}
-	play = editor.value
-	parse_play()
+	editor_sources[editor_scene] = editor.value
+	sources = editor_sources
+	for (var s of Object.keys(editor_sources))
+		scenes[s] = {source: s, index: 0}
+	variables = {}
+	action_depth = 0
+	output.replaceChildren()
+	scene_stack = []
+	enter_scene(scenes[scene])
 }
 
 function save() {
-	localStorage.setItem("stage-debugger-autosave", editor.value)
+	localStorage.setItem("stage-debugger-scene", editor_scene)
+	localStorage.setItem("stage-debugger-sources", JSON.stringify(editor_sources))
+}
+
+function change() {
+	editor_sources[editor_scene] = editor.value
+	editor_scene = scene_select.value
+	editor.value = editor_sources[editor_scene] ?? ""
+}
+
+function add() {
+	var value = prompt("scene name")
+	if (!value) return
+	var o = document.createElement("option");
+	o.value = value
+	o.text = value
+	scene_select.add(o)
+	scene_select.value = value
+	change()
+}
+
+function clear_editor() {
+	var o = confirm("This will clear everything, proceed?")
+	if (o) {
+		localStorage.setItem("stage-debugger-scene", "start")
+		localStorage.setItem("stage-debugger-sources", "{}")
+		location.reload()
+	}
 }
 
 // loop detection
@@ -68,11 +106,22 @@ set_var = (variable, value) => {
 }
 
 window.onload = e => {
+	scene_select = document.getElementById("scene-select")
 	debug_vars = document.getElementById("variables")
 	container = document.getElementById("container")
 	output = document.getElementById("output") 
 	editor = document.getElementById("editor")
-	editor.value = localStorage.getItem("stage-debugger-autosave") ?? ""
+	editor_sources = JSON.parse(localStorage.getItem("stage-debugger-sources")) ?? {}
+	for (var k of Object.keys(editor_sources)) {
+		if (k == "start") continue // HACK
+		var o = document.createElement("option");
+		o.value = k
+		o.text = k
+		scene_select.add(o)
+	}
+	editor_scene = localStorage.getItem("stage-debugger-scene") ?? "start"
+	scene_select.value = editor_scene
+	editor.value = editor_sources[editor_scene] ?? ""
 	editor.addEventListener('keydown', function(e) {
 		if (e.key == "Tab") {
 			e.preventDefault()
