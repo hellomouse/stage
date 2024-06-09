@@ -59,8 +59,14 @@ a {
 		<div id='container'><h3 style='text-align: center'>Output<h3><div id='output'></div></div>
 		<div>
 			<textarea id='editor'></textarea>
-			<button onclick='run()'>Run</button>
+			<button onclick='run("start")'>Run from start</button>
+			<button onclick='run(editor_scene)'>Run from here</button>
 			<button onclick='save()'>Save</button>
+			<select onchange='change()' name="scenes" id="scene-select">
+				  <option value="start">start</option>
+			</select>
+			<button onclick='add()'>Add</button>
+			<button onclick='clear_editor()'>Clear</button>
 		</div>
 	</body>
 </html>
