@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - editor</title>
+		<meta charset="UTF-8">
+		<link href="favicon-o.png" rel="icon" type="image/png" />
+		<script>let load_debugger = true</script>
+		<script src='loader.js'></script>
+		<style>
+body {
+	background-color: #222;
+	color: #FFF;
+	user-select: none;
+	overflow: hidden;
+	margin: 0;
+	white-space: nowrap;
+	display: flex;
+}
+
+#top-bar {
+	cursor: default;
+	height: 1.5em;
+	border-bottom-width: 2px;
+	border-bottom-style: solid;
+	border-bottom-color: #68615c;
+	margin-top: 4px;
+	padding-left: 2px;
+	padding-right: 2px;
+}
+
+textarea {
+	background-color: #444;
+	color: #FFF;
+	border: 0;
+	resize: none;
+	height: 100%;
+}
+
+#left-pane {
+	flex-shrink: 0;
+}
+
+#middle-pane {
+	width: 100%;
+}
+
+#right-pane {
+	flex-shrink: 0;
+}
+
+.file {
+	background-color: #393939;
+	padding-left: 4px;
+}
+
+.file-button {
+	float: right;
+	text-align: center;
+	width: 22px;
+	height: 22px;
+}
+
+#remove-file:hover {
+	background-color: #933;
+}
+
+#rename-file:hover {
+	background-color: #393;
+}
+
+.file:nth-child(even) {
+	background-color: #333;
+}
+
+.file-active {
+	background-color: #557;
+}
+
+.file-active:nth-child(even) {
+	background-color: #557;
+}
+
+.file:hover {
+	cursor: default;
+	background-color: #555;
+}
+
+section {
+	display: flex;
+	flex-direction: column;
+}
+
+#bottom-bar {
+	display: flex;
+	cursor: default;
+	height: 24px;
+}
+
+#bottom-bar > span {
+	background-color: #797069;
+	flex-grow: 1;
+	margin-left: 2px;
+	margin-right: 2px;
+	text-align: center;
+	border-style: solid;
+	border-color: #68615c;
+	border-width: 1px;
+}
+
+#bottom-bar > span:hover {
+	color: #FF0;
+	background-color: #867d75;
+}
+
+#top-bar > span {
+	background-color: #797069;
+	margin-right: 4px;
+	position: relative;
+	left: 1px;
+	border-style: solid;
+	border-color: #68615c;
+	border-width: 1px;
+	padding-bottom: 2px;
+	padding-top: 2px;
+	padding-left: 4px;
+	padding-right: 4px;
+	text-align: center;
+}
+
+#top-bar > span:hover {
+	color: #FF0;
+	background-color: #a27855;
+}
+
+#top-bar > .active {
+	background-color: #916846;
+}
+
+#divider {
+	flex-shrink: 0;
+	cursor: col-resize;
+	height: 100vh;
+	background-color: black;
+	width: 4px;
+	margin-left: 2px;
+	margin-right: 2px;
+}
+
+iframe {
+	border: 0;
+	width: 100%;
+}
+
+#right-pane-container, #help {
+	flex-grow: 1;
+	display: flex;
+}
+
+p {
+	margin: 8px 0;
+}
+
+.action {
+	text-decoration: none;
+	cursor: pointer;
+	color: turquoise;
+	display: block;
+}
+
+.action:hover, a:hover {
+	color: #FF9966;
+}
+
+.action:before {
+	content: "> ";
+}
+
+.action:hover:before {
+	content: "​ >";
+}
+
+#output {
+	display: block;
+	white-space: wrap;
+	overflow-wrap: break-word;
+	overflow: scroll;
+}
+		</style>
+	</head>
+	<body>
+		<section id='left-pane' style='width: 480px;'>
+			<div id='top-bar'>
+				<span class='active' onclick='show_tab(event,"file-list")'>Scenes</span><span onclick='show_tab(event,"variables")'>Variables</span><span onclick='show_tab(event,"metadata")'>Info</span>
+			</div>
+			<div id='left-pane-container'>
+				<div id='file-list'>
+				</div>
+				<div id='variables' style='display: none;'>
+				</div>
+				<div id='metadata' style='display: none;'>
+					<div style='display: grid; grid-template-columns: auto auto;'>
+						<label>Name:</label> <input id='play-name'>
+						<label>Author:</label> <input id='play-author'>
+					</div>
+				</div>
+			</div>
+		</section>
+		<div side='left' id='divider'></div>
+		<section id='middle-pane'>
+			<div id='top-bar'>
+				<span onclick='new_button()'>New</span><span onclick='run()'>Run</span><span onclick='run("start")'>Start</span><span onclick='save()'>Save</span><span onclick='export_play()'>Export</span><span onclick='import_play()'>Import</span>
+			</div>
+			<textarea id='code-area' disabled></textarea>
+			<div id='bottom-bar'>
+			</div>
+		</section>
+		<div side='right' id='divider'></div>
+		<section id='right-pane' style='width: 480px;'>
+			<div id='top-bar'>
+				<span class='active' onclick='show_tab(event,"output")'>Output</span><span onclick='show_tab(event,"help")'>Help</span>
+			</div>
+			<div id='right-pane-container'>
+				<div id='output'></div>
+				<div id='help' style='display: none;'><iframe id='help-iframe' src='cheatsheet.html'></iframe></div>
+			</div>
+		</section>
+	</body>
+</html>

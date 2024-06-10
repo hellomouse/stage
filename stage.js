@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-const stage_version = "20240609";
+const stage_version = "20240610";
 let play_chunks = {};
 
 let sources = {};
@@ -184,16 +184,22 @@ function evaluate(i, si) {
 	for (var n of node)
 		result = resolve_token(n)
 	if (si && get_value(result)) enter_subscene(si)
-	else if (!si) set_var("status", result)
+	else if (!si) {
+		set_var("status", result)
+		var c = checks[get_value(result)]
+		if (c) enter_subscene(c.index, c.source)
+	}
 	return i
 }
+
+let checks = {}
 
 function check(i, si) {
 	var t = ""
 	while (play[++i] && play[i] != '\n') t += play[i]
 	current_index = i
-	var result = get_value(execute_function("=", [["symbol", "status"], token(t)]), 'bool')
-	if (result) enter_subscene(si)
+	var result = get_value(token(t))
+	if (result != null) checks[result] = {source: current_source, index: si}
 	return i
 }
 
@@ -229,10 +235,9 @@ function comment(i) {
 	}
 }
 
-function enter_subscene(si) {
-	var ss = {source: current_source, index: si}
-	subscene_return.push(ss)
-	subscene_change = ss
+function enter_subscene(si, source) {
+	subscene_return.push({source: current_source, index: current_index})
+	subscene_change = {source: source ?? current_source, index: si}
 }
 
 function enter_scene(s) {
@@ -902,12 +907,10 @@ function parse_play() {
 			console.log(`INFO: Scene ${k} at ${i} in 'play'.`)
 		}
 	}
-
-	document.getElementById("load")?.remove()
-	restart()
 }
 
 function parse_legacy_play() {
+	console.log("WARN: Legacy play format is deprecated and may be removed in a future version.")
 	var index = -1
 	variables = {}
 	action_depth = 0
@@ -919,11 +922,13 @@ function parse_legacy_play() {
 		var buffer = ""
 		index += 5
 		while (play[++index] != '\n') buffer += play[index]
-		scenes[buffer] = {source: "play", index: 0};
+		scenes[buffer] = {source: "play", index: index};
 	}
-	if (!scenes["start"]) scenes["start"] = {source: "play", index: 0}
-	document.getElementById("load")?.remove()
-	restart()
+	if (!scenes["start"]) {
+		scenes["start"] = {source: "play", index: 0}
+		return false
+	}
+	return true
 }
 
 function play_file(file) {
@@ -934,6 +939,8 @@ function play_file(file) {
 		var magic = play.substring(0, 10)
 		if (magic == "STAGE PLAY") parse_play()
 		else parse_legacy_play()
+		document.getElementById("load")?.remove()
+		restart()
 	}
 }
 
