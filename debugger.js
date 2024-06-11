@@ -302,7 +302,7 @@ function remove_file(s) {
 }
 
 function new_scene(s) {
-	if (!s) return
+	if (!s || scene_element[s]) return
 	var e = document.createElement("div")
 	e.classList.add("file")
 	e.innerText = s

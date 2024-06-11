@@ -16,6 +16,15 @@ div:hover {
 	color: #FF9966;
 	background-color: #333;
 }
+@media (prefers-color-scheme: light) {
+	div {
+		color: #0000EE;
+	}
+
+	div:hover {
+		color: #ee7700;
+	}
+}
 		</style>
 		<script>
 document.onclick = (e) => {
@@ -101,16 +110,16 @@ document.onclick = (e) => {
 				<div>length</div>
 			</span></span>
 			<span class='reveal'><div>Stage</div><span class='hidden'>
-				<div>print</div>
-				<div>scene-change</div>
-				<div>scene-push</div>
-				<div>scene-pop</div>
-				<div>scene-jump</div>
-				<div>back</div>
-				<div>return</div>
-				<div>reset</div>
-				<div>stop</div>
-				<div>clear</div>
+				<div name='expr/funcs/print'>print</div>
+				<div name='expr/funcs/scene-change'>scene-change</div>
+				<div name='expr/funcs/scene-push'>scene-push</div>
+				<div name='expr/funcs/scene-pop'>scene-pop</div>
+				<div name='expr/funcs/scene-jump'>scene-jump</div>
+				<div name='expr/funcs/back'>back</div>
+				<div name='expr/funcs/return'>return</div>
+				<div name='expr/funcs/reset'>reset</div>
+				<div name='expr/funcs/stop'>stop</div>
+				<div name='expr/funcs/clear'>clear</div>
 			</span></span>
 			<div>if</div>
 			<div>concat</div>

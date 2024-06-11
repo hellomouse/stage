@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>scene-pop</h3>
+		<h4>Syntax</h4>
+		<div>(scene-pop)</div>
+		<h4>Return</h4>
+		<div>true on success, false if scene stack is empty.</div>
+		<h4>Description</h4>
+		<div><b>scene-pop</b> changes the scene to the scene on top of the scene stack, used in conjunction with <a href='expr/funcs/scene-push.html'>scene-push</a>.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ In scene "start":
+>Continue to scene.
+!(scene-push "scene")
+.
+/ In scene "scene":
+]Hello from "scene"!
+>Return to previous scene.
+!(scene-pop)
+.</pre></label>
+	</body>
+</html>

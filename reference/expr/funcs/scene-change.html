@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>scene-change</h3>
+		<h4>Syntax</h4>
+		<div>(scene-change scene:string)</div>
+		<h4>Return</h4>
+		<div>true on success, false if scene doesn't exist</div>
+		<h4>Description</h4>
+		<div><b>scene-change</b> changes the scene and clears the scene stack (see <a href='expr/funcs/scene-push.html'>scene-push</a> and <a href='expr/funcs/scene-pop.html'>scene-pop</a>).</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ In scene "start":
+!(scene-change "scene")
+.
+/ In scene "scene":
+]Hello from "scene"!
+.</pre></label>
+	</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>back</h3>
+		<h4>Syntax</h4>
+		<div>(back count:number)</div>
+		<h4>Return</h4>
+		<div>true.</div>
+		<h4>Description</h4>
+		<div><b>back</b> returns to a previous <a href='scene/marker.html'>marker</a> or <a href='scene/action.html'>non-blocking action</a>, note that scene change also produces a point at the start of the scene. By default the count is set to 1 allowing you to simply do <code>(back)</code>, the count is how many previous actions are skipped. In case you want to return to the latest action you may give a negative count, but that can be prone to creating infinite loops as back returns to the start of the action that called it.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ This marker is unnecessary if this is at the start of the scene.
+@
+{
+	] This action can be repeated
+	!(back)
+}>Action 1
+
+{
+	{
+		]"Subaction"
+		!(back)
+	}>Subaction
+	{
+		!(back 2)
+	}>Exit
+}>Action 2</pre></label>
+	</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>scene-jump</h3>
+		<h4>Syntax</h4>
+		<div>(scene-jump scene:string)</div>
+		<h4>Return</h4>
+		<div>true on success, false if scene doesn't exist</div>
+		<h4>Description</h4>
+		<div><b>scene-jump</b> temporarily jumps to given scene and returns at the end of the scene, this function does not do any normal scene change clean up operations and can be used to for example include common snippets.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ In scene "start":
+]Start
+!(scene-jump "scene")
+]Continues after jump normally
+.
+/ In scene "scene":
+]Hello from "scene"!
+.</pre></label>
+	</body>
+</html>
