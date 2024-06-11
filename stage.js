@@ -32,7 +32,7 @@ const TypeMod = {
 	symbol: (1 << 8)
 }
 
-const stage_version = "20240610";
+const stage_version = "20240611";
 let play_chunks = {};
 
 let sources = {};
@@ -340,6 +340,8 @@ const coercion_functions = {
 function coerce_token(v, type) {
 	if (v[0] == type) // v already type
 		return v
+	if (v[0] == Type.reference)
+		v = resolve_token(v)
 	var coerce = v
 	if (coercion_functions[v[0]] && coercion_functions[v[0]][type]) {
 		coerce = coercion_functions[v[0]][type](v[1])
@@ -350,16 +352,31 @@ function coerce_token(v, type) {
 	return coerce
 }
 
-function get_value(v, type) {
+function get_token_type(v, type) {
 	if (!v)
 		return null
 	if (type == Type.token)
 		return v
-	var vt = v[0]
-	if (type != Type.symbol || vt == Type.function)
+	if (type != Type.symbol || v[0] == Type.function) {
 		v = resolve_token(v)
-	if (vt != type && type != Type.any)
+		// this is some abyssmal dogshit garbage right here.
+		// the entire function is fucking r******* and the person who made it should suffer
+		// oh wait that person is me, and I sure am suffering.
+		// WHAT THE FUCK WAS THE POINT WITH MAKING ALL THESE FUCKING DUMB FUNCTIONS
+		// What I am trying to say is that these functions are all dumb and should be thrown out
+		// and replaced with hopefully something better :)
+		if (v[0] == Type.reference && (type != Type.reference && type != Type.symbol))
+			v = resolve_token(v)
+	}
+	if (v[0] != type && type != Type.any)
 		v = coerce_token(v, type)
+	return v
+}
+
+function get_value(v, type) {
+	if (type == Type.token)
+		return v
+	v = get_token_type(v, type)
 	return v[1]
 }
 
@@ -404,6 +421,10 @@ function humanify_token(v) {
 
 function set_var(variable, value) {
 	return variables[variable] = value
+}
+
+function set_ref(ref, value) {
+	return resolve_token(ref[1][0])[1][ref[1][1]] = value
 }
 
 const funcs = {
@@ -471,7 +492,7 @@ const funcs = {
 		sym = get_token(sym)
 		val = resolve_token(val)
 		if (sym[0] == Type.reference)
-			return resolve_token(sym[1][0])[1][sym[1][1]] = val
+			return set_ref(sym, val)
 		return set_var(sym[1], val)
 	}],
 	"sym": [[["token", Type.token]], (args, token) => {
@@ -727,10 +748,10 @@ function execute_function(name, args) {
 						}
 					}
 					for (var j = i; j < args.length; j++)
-						il.push([lt, get_value(args[j], lt)])
+						il.push(get_token_type(args[j], lt))
 				} else {
 					var l = get_value(args[i], Type.list)
-					for (var e of l[1]) il.push([lt, get_value(e, lt)])
+					for (var e of l[1]) il.push(get_token_type(e, lt))
 				}
 				ia[func[0][i][0]] = [Type.list, il]
 				continue
@@ -742,7 +763,7 @@ function execute_function(name, args) {
 				ia[func[0][i][0]] = tk
 				continue
 			}
-			ia[func[0][i][0]] = [func[0][i][1], get_value(args[i], func[0][i][1])]
+			ia[func[0][i][0]] = get_token_type(args[i], func[0][i][1])
 		}
 		for (var e in ia)
 			for (var i of func[2][e])

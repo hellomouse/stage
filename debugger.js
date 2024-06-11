@@ -92,7 +92,7 @@ var original_set = this.set_var
 set_var = (variable, value) => {
 	var ret = original_set(variable, value)
 	if (variable == 'loop_max')
-		loop_max = get_value(value, 'number')
+		loop_max = get_value(value, Type.number)
 	if (!variable_track[variable]) {
 		var d = document.createElement("div")
 		d.className = "variable"
@@ -101,6 +101,23 @@ set_var = (variable, value) => {
 		variable_track[variable] = d
 	} else {
 		variable_track[variable].innerText = `${variable}: ${humanify_token(ret)}`
+	}
+	return ret
+}
+
+var original_set_ref = this.set_ref
+set_ref = (ref, value) => {
+	var ret = original_set_ref(ref, value)
+	var variable = get_value(ref[1][0], Type.symbol)
+	value = resolve_token(ref[1][0])
+	if (!variable_track[variable]) {
+		var d = document.createElement("div")
+		d.className = "variable"
+		d.innerText = `${variable}: ${humanify_token(value)}`
+		debug_vars.appendChild(d)
+		variable_track[variable] = d
+	} else {
+		variable_track[variable].innerText = `${variable}: ${humanify_token(value)}`
 	}
 	return ret
 }
