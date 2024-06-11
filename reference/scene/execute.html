@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3><code>!</code> - Execute</h3>
+		<div>The <b>Execute</b> character executes the <a href='expr/expressions.html'>Expression</a> following the character. Unlike <a href='scene/evaluate.html'>Evaluate</a> the <b>Execute</b> character can span multiple lines as long as the expression is not closed.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(print "This is an example of execute")
+!(print "There can be multiple functions on the same line")(print "like this.")
+/ Below is an example of a multiline execute.
+!(set x
+	(+ 1 1)) (print x
+", The execution will continue until the final parenthesis is closed."
+)</pre></label>
+	</body>
+</html>

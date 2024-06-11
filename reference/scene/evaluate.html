@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3><code>?</code> - Evaluate</h3>
+		<div>The <b>Evaluate</b> character evaluates the following <a href='expr/expressions.html'>Expression</a> and stores the result in the status variable unless a <a href='scene/subscenes.html'>Subscene</a> is provided, in which case if the resulting value is true the subscene will be entered. Evaluate is also required for the usage of the <a href='scene/check.html'>Check</a> character, this is explained on the page for Check.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+?1
+!(print "status is now set to 1: " status)
+/ set variable x to 1
+!(set x 1)
+{
+	]If X is one, this will be shown.
+}?(= x 1)
+]The play will proceed as normal after an evaluate.
+</pre></label>
+	</body>
+</html>

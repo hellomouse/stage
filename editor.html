@@ -49,6 +49,8 @@ textarea {
 }
 
 .file {
+	padding-top: 2px;
+	padding-bottom: 2px;
 	background-color: #393939;
 	padding-left: 4px;
 }
@@ -183,7 +185,12 @@ p {
 	display: block;
 	white-space: wrap;
 	overflow-wrap: break-word;
-	overflow: scroll;
+	overflow-y: scroll;
+	scrollbar-width: none;
+}
+
+#output::-webkit-scrollbar {
+	display: none;
 }
 		</style>
 	</head>
@@ -221,7 +228,7 @@ p {
 			</div>
 			<div id='right-pane-container'>
 				<div id='output'></div>
-				<div id='help' style='display: none;'><iframe id='help-iframe' src='cheatsheet.html'></iframe></div>
+				<div id='help' style='display: none;'><iframe id='help-iframe' src='reference/'></iframe></div>
 			</div>
 		</section>
 	</body>

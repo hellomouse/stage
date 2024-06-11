@@ -48,7 +48,7 @@ function save() {
 		editor_contents[selected_file.attributes.scene.value] = code_area.value
 		localStorage.setItem("stage-debugger-scene", selected_file.attributes.scene.value)
 	} else {
-		localStorage.setItem("stage-debugger-scene", null)
+		localStorage.setItem("stage-debugger-scene", "start")
 	}
 	localStorage.setItem("stage-debugger-sources", JSON.stringify(editor_contents))
 }

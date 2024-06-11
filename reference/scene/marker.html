@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3><code>@</code> - Marker</h3>
+		<div>The marker character inserts its position in the action stack allowing returning to its position using the <a href='expr/funcs/back.html'>back</a> function.</div>
+		<h4>Examples</h4>
+		<label class="cont">Repeatable actions
+			<input type="checkbox" />
+			<pre>
+@
+{
+	!(back)
+}
+>Action 1
+{
+	!(back)
+}
+>Action 2</pre></label>
+	</body>
+</html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3><code>></code> - Action</h3>
+		<div>The <b>Action</b> character inserts the text following it in Stage's output as a clickable "action".</div>
+		<div>Actions are the main way users are expected to interact with Stage plays. The most simple form of an action is the "blocking" action, which stops the play until an action is clicked, the second form which is more used is the "non-blocking" action. "Non-blocking" actions take a <a href='scene/subscenes.html'>Subscene</a> and do not stop the play.</div>
+		<h4>Examples</h4>
+		<label class="cont">Blocking Action
+			<input type="checkbox" />
+			<pre>
+]Shown before action is clicked.
+>Action
+]Shown after Action is clicked.
+>Action 2
+]This is shown after Action 2 is clicked.</pre></label>
+		<label class="cont">Non-blocking Action
+			<input type="checkbox" />
+			<pre>
+]The non-blocking action 
+{
+	]Hello from subscene, the play stops here.
+}
+>Action
+]The play continues after showing the action.
+{
+	]Second action!
+}
+>Second action.
+]You can create as many non-blocking actions as you want.</pre></label>
+	</body>
+</html>

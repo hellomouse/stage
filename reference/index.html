@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+		<link href="favicon-o.png" rel="icon" type="image/png" />
+		<link href="style.css" rel="stylesheet" />
+		<link href="../style.css" rel="stylesheet" />
+		<script>
+function update_base(e) {
+	var p = window.location.href
+	p = p.substring(0, p.lastIndexOf('/'));
+	var d = e.target.contentWindow.document
+	var el = d.createElement("base")
+	el.href = p + '/'
+	d.head.appendChild(el)
+	el = d.createElement("link")
+	el.href = p + '/style.css'
+	el.rel = "stylesheet"
+	d.head.appendChild(el)
+	el = d.createElement("link")
+	el.href = p + '/../style.css'
+	el.rel = "stylesheet"
+	d.head.appendChild(el)
+}
+
+window.addEventListener("info_path", (e) => {
+	var ref = document.getElementById("ref")
+	ref.src = e.path + '.html'
+})
+
+let left_panel
+let resizing = false
+
+document.onmouseup = (e) => {
+	if (!resizing) return
+	resizing = false
+	document.querySelectorAll("iframe").forEach(v => v.style.pointerEvents = "auto")
+}
+
+document.onmousemove = (e) => {
+	if (!resizing) return
+	left_panel.style.width = `${e.clientX - 2}px`
+}
+
+document.onmousedown = (e) => {
+	if (e.target.id != "separator") return
+	resizing = true;
+	left_panel = document.getElementById("left-panel")
+	document.querySelectorAll("iframe").forEach(v => v.style.pointerEvents = "none")
+}
+		</script>
+		<style>
+body {
+	max-width: unset;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
+}
+
+iframe {
+	border: 0;
+	margin-left: 8px;
+	margin-right: 8px;
+	width: 100%;
+}
+
+#left-panel {
+	width: 380px;
+}
+
+#content {
+	flex-grow: 1;
+}
+
+#ref-container {
+	height: 100%;
+	display: flex;
+}
+
+#ref-container > div {
+	display: flex;
+}
+
+#separator {
+	cursor: col-resize;
+	border-left: 1px solid #eee;
+	border-right: 1px solid #aaa;
+	background-color: #ccc;
+	width: 4px;
+}
+		</style>
+	</head>
+	<body>
+		<div id='ref-container'>
+			<div id='left-panel'>
+				<iframe src='contents.html'></iframe>
+			</div>
+			<span id='separator'></span>
+			<div id='content'>
+				<iframe onload='update_base(event)' src='info.html' id='ref'></iframe>
+			</div>
+		</div>
+	</body>
+</html>

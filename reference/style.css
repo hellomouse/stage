@@ -1,0 +1,72 @@
+body {
+	line-height: 1.6;
+}
+
+h3, h4 {
+	text-align: center;
+}
+
+code {
+	padding: 1px;
+	border-radius: 3px;
+}
+
+.cont {
+	color: #EEE;
+	text-align: center;
+	display: block;
+	width: 100%;
+	background-color: #444;
+	border-radius: 5px;
+	margin: 1em 0;
+}
+
+.cont input:checked ~ pre {
+	display: block;
+}
+
+.reveal {
+	display: block;
+}
+
+.hidden {
+	display: none;
+}
+
+.reveal > div::before {
+	display: inline;
+	content: "▶ ";
+}
+
+.reveal[active="1"] > div::before {
+	display: inline;
+	content: "▼ ";
+}
+
+.reveal[active="1"] > .hidden {
+	margin-left: 1.5em;
+	display: block;
+}
+
+input {
+	position: absolute;
+	opacity: 0;
+	cursor: pointer;
+	height: 0;
+	width: 0;
+}
+
+pre {
+	text-align: left;
+	line-height: 1.4;
+	margin-top: 0;
+	display: table;
+	width: 100%;
+	display: none;
+	border-radius: 0 0 3px 3px
+}
+
+pre, code {
+	color: #faaf87;
+	background-color: #1E1E1E;
+}

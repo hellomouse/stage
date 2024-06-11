@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>reference type</h3>
+		<div>The <b>reference</b> type is a reference to an index in a list. </div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(set x #(1 2 3 4))
+/ Sets y to a reference to value in the variable x's index 0. 
+!(set y (index x 0))
+!(print y)
+/ Change the value at index 0 in x, note that without the (get) this would change y to 4.
+/ instead of changing the value in x.
+!(set (get y) 4)
+!(print y)</pre></label>
+	</body>
+</html>

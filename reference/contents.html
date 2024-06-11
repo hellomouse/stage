@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+		<link href="style.css" rel="stylesheet" />
+		<link href="../style.css" rel="stylesheet" />
+		<style>
+div {
+	line-height: normal;
+	cursor: pointer; 
+	color: turquoise;
+}
+
+div:hover {
+	color: #FF9966;
+	background-color: #333;
+}
+		</style>
+		<script>
+document.onclick = (e) => {
+	if (e.target.attributes.name) {
+		var name = e.target.attributes.name.value
+		if (window.parent) {
+			var event = new Event("info_path")
+			event.path = name
+			window.parent.dispatchEvent(event)
+		} else {
+			window.location.href = name + '.html'
+		}
+		return
+	}
+	var n = e.target.parentNode;
+	if (!n || !n.attributes) return;
+	var a = +n.attributes.active?.value
+	if (n.classList.contains("reveal"))
+		n.setAttribute("active", +!a)
+}
+		</script>
+	</head>
+	<body>
+		<div name='editor'>Editor</div>
+		<div name='scene/stage'>Stage</div>
+		<span class='reveal'><div>Scene</div><span class='hidden'>
+			<div name='scene/scenes'>Scenes</div>
+			<div name='scene/subscenes'>Subscenes</div>
+			<div name='scene/output'><code>]</code> - output</div>
+			<div name='scene/action'><code>></code> - action</div>
+			<div name='scene/evaluate'><code>?</code> - evaluate</div>
+			<div name='scene/execute'><code>!</code> - execute</div>
+			<div name='scene/check'><code>:</code> - check</div>
+			<div name='scene/bucket'><code>[</code> - input</div>
+			<div name='scene/marker'><code>@</code> - marker</div>
+			<div name='scene/stop'><code>.</code> - stop</div>
+			<div name='scene/comment'><code>/</code> - comment</div>
+		</span></span>
+		<div name='scene/textformat'>Text Formatting</div>
+		<div name='expr/expressions'>Expressions</div>
+		<span class='reveal'><div>Types</div><span class='hidden'>
+			<div name='expr/types/boolean'>boolean</div>
+			<div name='expr/types/number'>number</div>
+			<div name='expr/types/string'>string</div>
+			<div name='expr/types/list'>list</div>
+			<div name='expr/types/pair'>pair</div>
+			<div name='expr/types/function'>function</div>
+			<div name='expr/types/symbol'>symbol</div>
+			<div name='expr/types/reference'>reference</div>
+		</span></span>
+		<span class='reveal'><div>Functions</div><span class='hidden'>
+			<span class='reveal'><div>Variables</div><span class='hidden'>
+				<div name='expr/funcs/set'>set</div>
+				<div name='expr/funcs/get'>get</div>
+				<div name='expr/funcs/del'>del</div>
+			</span></span>
+			<span class='reveal'><div>Number stuff & Comparisons</div><span class='hidden'>
+				<div>+</div>
+				<div>-</div>
+				<div>*</div>
+				<div>/</div>
+				<div>%</div>
+				<div>rem</div>
+				<div>abs</div>
+				<div>floor</div>
+				<div>+1</div>
+				<div>-1</div>
+				<div><</div>
+				<div>=</div>
+				<div>></div>
+				<div>not</div>
+				<div>and</div>
+				<div>or</div>
+			</span></span>
+			<span class='reveal'><div>List</div><span class='hidden'>
+				<div>list</div>
+				<div>push</div>
+				<div>pop</div>
+				<div>first</div>
+				<div>last</div>
+				<div>rest</div>
+				<div>index</div>
+				<div>length</div>
+			</span></span>
+			<span class='reveal'><div>Stage</div><span class='hidden'>
+				<div>print</div>
+				<div>scene-change</div>
+				<div>scene-push</div>
+				<div>scene-pop</div>
+				<div>scene-jump</div>
+				<div>back</div>
+				<div>return</div>
+				<div>reset</div>
+				<div>stop</div>
+				<div>clear</div>
+			</span></span>
+			<div>if</div>
+			<div>concat</div>
+			<div>rand</div>
+			<div>def-fun</div>
+			<div>do</div>
+			<div>sym</div>
+		</span></span>
+	</body>
+</html>

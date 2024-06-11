@@ -305,7 +305,7 @@ function input_check(e, si, depth, source) {
 /* ----------- */
 
 function token(tok) {
-	const string_re = /(^'.*'$)|(^".*"$)/
+	const string_re = /(^".*"$)/
 	const pair_re = /^.+:.+$/
 	const bool_re = /^(yes|no|true|false|t|f)$/
 	if (Array.isArray(tok))
@@ -411,7 +411,7 @@ function humanify_token(v) {
 		case Type.list:
 			return `#(${v[1].map(x => humanify_token(x)).join(" ")})`
 		case Type.pair:
-			return `${humanify_token(v[1][0])}:${humanify_token(v[1][0])}`
+			return `${humanify_token(v[1][0])}:${humanify_token(v[1][1])}`
 		case Type.boolean:
  		case Type.string:
 		case Type.number:
@@ -686,7 +686,19 @@ function recursive_find_args(func, args) {
 function define_function(name, args, func) {
 	var args = args instanceof Array ? args : parse_expression(args + '\n')
 	var definition_args = []
-	for (var p of args) definition_args.push([p[1][0][1], Type[p[1][1][1]]])
+	for (var p of args) {
+		var to = 0
+		var t = p[1][1][1]
+		switch (t[0]) {
+			// unfortunately due to this being a pair, ' would get converted to sym().
+			// need to think about this, but for now poip.
+			case "|": to = TypeMod.symbol; break
+			case "#": to = TypeMod.list; break
+		}
+		if (to) t = t.substring(1)
+		to |= Type[t]
+		definition_args.push([p[1][0][1], to])
+	}
 	if (func instanceof Array) {
 		funcs[name] = [definition_args, func, recursive_find_args(func, definition_args.map((a) => {return a[0]}))]
 	} else {

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>del</h3>
+		<h4>Syntax</h4>
+		<div>(del token)</div>
+		<h4>Return</h4>
+		<div>true on success, otherwise false.</div>
+		<h4>Description</h4>
+		<div><b>Del</b> takes any token and tries to delete it, this will only work if the token is a href='expr/types/symbol.html'>symbol</a> or a <a href='expr/types/reference.html'>reference</a>.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(set x 1)
+/ Deletes the variable x.
+!(del x)
+/ As the variable x no longer exist, this will print 0 (default value).
+!(print x)</pre></label>
+	</body>
+</html>

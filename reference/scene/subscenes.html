@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>Subscenes</h3>
+		<div>Subscenes are seperate "blocks" in a scene created by surrounding a section with <code>{</code> and <code>}</code>. Subscenes are used by certain characters such as <a href='scene/action.html'>action</a> and <a href='scene/evaluate.html'>evaluate</a>, and will normally be skipped by Stage.</div>
+		<h4>Examples</h4>
+
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+{
+	]This is a subscene which will not be entered as it is not used by any character.
+}
+
+{
+	]This subscene will be entered if the action is clicked.
+}>Action
+
+{
+	]This subscene will always be entered.
+}?true
+
+{
+	]This subscene will never be entered.
+}?false</pre></label>
+	</body>
+</html>
