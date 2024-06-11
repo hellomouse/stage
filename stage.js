@@ -14,6 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+const Type = {
+	token:      0,
+	symbol:     1,
+	function:   2,
+	reference:  3,
+	number:     4,
+	string:     5,
+	boolean:    6,
+	list:       7,
+	pair:       8,
+	any:        127 // DO NOT INCREASE WITHOUT CHANGING TYPEMODS
+}
+
+const TypeMod = {
+	list:   (1 << 7),
+	symbol: (1 << 8)
+}
+
 const stage_version = "20240610";
 let play_chunks = {};
 
@@ -131,7 +149,7 @@ function text_format(text, parent_element) {
 					while (text[++i] && text[i] != '>') sym += text[i]
 					var ret
 					for (var tok of parse_expression(sym + '\n'))
-						ret = get_value(tok, 'string')
+						ret = get_value(tok, Type.string)
 					c.innerHTML += ret
 					continue
 				case '\\': default: continue
@@ -183,7 +201,7 @@ function evaluate(i, si) {
 	var result
 	for (var n of node)
 		result = resolve_token(n)
-	if (si && get_value(result)) enter_subscene(si)
+	if (si && get_value(result, Type.any)) enter_subscene(si)
 	else if (!si) {
 		set_var("status", result)
 		var c = checks[get_value(result)]
@@ -213,7 +231,7 @@ function execute(i) {
 		} else if (!str) {
 			if (play[i] == '(') pc++;
 			else if (play[i] == ')') pc--;
-			else if (play[i] == '"' || play[i] == "'") str = play[i];
+			else if (play[i] == '"') str = play[i];
 			else if (play[i] == '\n' && !pc) break;
 		}
 		expr += play[i]
@@ -222,7 +240,7 @@ function execute(i) {
 	current_index = i
 	var node = parse_expression(expr)
 	for (var n of node)
-		get_value(n, 'any')
+		get_value(n, Type.any)
 	return i
 }
 function comment(i) {
@@ -274,7 +292,7 @@ function input_check(e, si, depth, source) {
 	if (e.key == "Enter") {
 		e.preventDefault()
 		current_source = source
-		set_var("status", ['string', e.target.value])
+		set_var("status", [Type.string, e.target.value])
 		action_depth++
 		output.appendChild(document.createElement("hr"))
 		stop = false
@@ -291,31 +309,31 @@ function token(tok) {
 	const pair_re = /^.+:.+$/
 	const bool_re = /^(yes|no|true|false|t|f)$/
 	if (Array.isArray(tok))
-		return ["list", tok]
+		return [Type.list, tok]
 	if (string_re.exec(tok))
-		return ["string", tok.slice(1, -1)]
+		return [Type.string, tok.slice(1, -1)]
 	if (pair_re.exec(tok))
-		return ["pair", tok.split(":").map(token)]
+		return [Type.pair, tok.split(":").map(token)]
 	if (!isNaN(tok) && !isNaN(parseFloat(tok)))
-		return ["number", Number(tok)]
+		return [Type.number, Number(tok)]
 	if (bool_re.exec(tok)) {
 		if (typeof tok == "boolean")
-			return ["bool", tok]
-		return ["bool", tok.startsWith("t") || tok.startsWith("y")]
+			return [Type.boolean, tok]
+		return [Type.boolean, tok.startsWith("t") || tok.startsWith("y")]
 	}
-	return ["symbol", tok]
+	return [Type.symbol, tok]
 }
 
 const coercion_functions = {
-	"list": {
-		"boolean": (list) => { return ["boolean", !!list.length] }
+	[Type.list]: {
+		[Type.boolean]: (list) => { return [Type.boolean, !!list.length] }
 	},
-	"number": {
-		"string": (num) => { return ["string", num.toString()] }
+	[Type.number]: {
+		[Type.string]: (num) => { return [Type.string, num.toString()] }
 	},
-	"string": {
-		"number": (str) => { return ["number", Number(str)] },
-		"symbol": (str) => { return ["symbol", str] }
+	[Type.string]: {
+		[Type.number]: (str) => { return !isNaN(str) && !isNaN(parseFloat(str)) ? [Type.string, Number(str)] : null },
+		[Type.symbol]: (str) => { return [Type.symbol, str] }
 	}
 }
 
@@ -323,8 +341,10 @@ function coerce_token(v, type) {
 	if (v[0] == type) // v already type
 		return v
 	var coerce = v
-	if (coercion_functions[v[0]] && coercion_functions[v[0]][type])
+	if (coercion_functions[v[0]] && coercion_functions[v[0]][type]) {
 		coerce = coercion_functions[v[0]][type](v[1])
+		coerce = coerce ? coerce : v
+	}
 	if (coerce[0] != type)
 		console.log("WARN: Unable to coerce", coerce[0], "to type", type)
 	return coerce
@@ -333,12 +353,12 @@ function coerce_token(v, type) {
 function get_value(v, type) {
 	if (!v)
 		return null
-	if (type == 'token')
+	if (type == Type.token)
 		return v
 	var vt = v[0]
-	if (type != 'symbol' || vt == 'function')
-		v = resolve_token(resolve_token(v))
-	if (vt != type && type != 'any')
+	if (type != Type.symbol || vt == Type.function)
+		v = resolve_token(v)
+	if (vt != type && type != Type.any)
 		v = coerce_token(v, type)
 	return v[1]
 }
@@ -346,7 +366,7 @@ function get_value(v, type) {
 function get_token(v) {
 	if (!v)
 		return null
-	if (v[0] == 'function')
+	if (v[0] == Type.function)
 		v = execute_function(v[1][0], v[1][1])
 	return v
 }
@@ -354,30 +374,30 @@ function get_token(v) {
 function resolve_token(v) {
 	if (!v)
 		return null
-	if (v[0] == 'reference')
+	if (v[0] == Type.reference)
 		v = resolve_token(v[1][0])[1][v[1][1]]
-	if (v[0] == 'symbol')
-		v = variables[v[1]] ? variables[v[1]] : ['number', 0]
-	if (v[0] == 'function')
+	if (v[0] == Type.symbol)
+		v = variables[v[1]] ? variables[v[1]] : [Type.number, 0]
+	if (v[0] == Type.function)
 		v = execute_function(v[1][0], v[1][1])
 	return v
 }
 
 function humanify_token(v) {
 	switch (v[0]) {
-		case 'reference':
+		case Type.reference:
 			return `ref ${humanify_token(v[1][0])}[${v[1][1]}]`
-		case 'symbol':
+		case Type.symbol:
 			return `sym ${v[1]}`
-		case 'function':
+		case Type.function:
 			return `(${v[1][0]} ${v[1][1].map(x => humanify_token(x)).join(" ")})`
-		case 'list':
+		case Type.list:
 			return `#(${v[1].map(x => humanify_token(x)).join(" ")})`
-		case 'pair':
+		case Type.pair:
 			return `${humanify_token(v[1][0])}:${humanify_token(v[1][0])}`
-		case 'bool':
- 		case 'string':
-		case 'number':
+		case Type.boolean:
+ 		case Type.string:
+		case Type.number:
 			return v[1]
 	}
 }
@@ -387,46 +407,46 @@ function set_var(variable, value) {
 }
 
 const funcs = {
-	"+": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+	"+": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var num of rest) first += num
-		return ['number', first]
+		return [Type.number, first]
 	}],
-	"-": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+	"-": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var num of rest) first -= num
-		return ['number', first]
+		return [Type.number, first]
 	}],
-	"*": [[["first", "number"], ["rest", "#number"]], (args, first, rest) => {
+	"*": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var num of rest) first *= num
-		return ['number', first]
+		return [Type.number, first]
 	}],
-	"/": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
+	"/": [[["dividend", Type.number], ["divisor", Type.number|TypeMod.list]], (args, dividend, divisor) => {
 		for (var num of divisor) dividend /= num
-		return ['number', dividend]
+		return [Type.number, dividend]
 	}],
-	"%": [[["dividend", "number"], ["divisor", "#number"]], (args, dividend, divisor) => {
-		return ['number', ((dividend % divisor) + divisor) % divisor]
+	"%": [[["dividend", Type.number], ["divisor", Type.number|TypeMod.list]], (args, dividend, divisor) => {
+		return [Type.number, ((dividend % divisor) + divisor) % divisor]
 	}],
-	">": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+	">": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest) {
-			if (first <= n) return ['bool', false]
+			if (first <= n) return [Type.boolean, false]
 			first = n
 		}
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"<": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+	"<": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest) {
-			if (first >= n) return ['bool', false]
+			if (first >= n) return [Type.boolean, false]
 			first = n
 		}
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"=": [[["first","number"], ["rest", "#number"]], (args, first, rest) => {
+	"=": [[["first", Type.any], ["rest", Type.any|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest)
-			if (first != n) return ['bool', false]
-		return ['bool', true]
+			if (first != n) return [Type.boolean, false]
+		return [Type.boolean, true]
 	}],
-	"rem": [[["dividend", "number"], ["divisor", "number"]], (args, dividend, divisor) => {
-		return ['number', dividend % divisor]
+	"rem": [[["dividend", Type.number], ["divisor", Type.number]], (args, dividend, divisor) => {
+		return [Type.number, dividend % divisor]
 	}],
 	"get": [[], (args) => {
 		var result
@@ -436,123 +456,123 @@ const funcs = {
 	}],
 	"do": [[], (args) => {
 		for (var a of args) {
-			val = get_value(a, 'any')
+			val = get_value(a, Type.any)
 			if (Array.isArray(val)) execute_function("do", val)
 		}
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"abs": [[["num", "number"]], (args, num) => {
-		return ['number', Math.abs(num)]
+	"abs": [[["num", Type.number]], (args, num) => {
+		return [Type.number, Math.abs(num)]
 	}],
-	"floor": [[["num", "number"]], (args, num) => {
-		return ['number', Math.floor(num)]
+	"floor": [[["num", Type.number]], (args, num) => {
+		return [Type.number, Math.floor(num)]
 	}],
-	"set": [[["sym", "token"], ["val", "token"]], (args, sym, val) => {
+	"set": [[["sym", Type.token], ["val", Type.token]], (args, sym, val) => {
 		sym = get_token(sym)
 		val = resolve_token(val)
-		if (sym[0] == 'reference')
+		if (sym[0] == Type.reference)
 			return resolve_token(sym[1][0])[1][sym[1][1]] = val
 		return set_var(sym[1], val)
 	}],
-	"sym": [[["token", "token"]], (args, token) => {
+	"sym": [[["token", Type.token]], (args, token) => {
 		return token
 	}],
 	"reset": [[], (args) => {
 		restart()
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
 	"return": [[], (args) => {
 		enter_scene(current_scene)
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"back": [[["count", "number"]], (args, count) => {
+	"back": [[["count", Type.number]], (args, count) => {
 		for (var i = 0; i < (count ? count : 1); i++)
 			action_stack.pop()
 		subscene_change = action_stack[action_stack.length - 1]
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"not": [[["value", "any"]], (args, value) => {
-		return ['bool', !value]
+	"not": [[["value", Type.any]], (args, value) => {
+		return [Type.boolean, !value]
 	}],
 	"and": [[], (args) => {
 		for (var n of args)
-			if (!(1 && get_value(n, 'any'))) return ['bool', false]
-		return ['bool', true]
+			if (!(1 && get_value(n, Type.any))) return [Type.boolean, false]
+		return [Type.boolean, true]
 	}],
 	"or": [[], (args) => {
 		for (var n of args)
-			if (0 || get_value(n, 'any')) return ['bool', true]
-		return ['bool', false]
+			if (0 || get_value(n, Type.any)) return [Type.boolean, true]
+		return [Type.boolean, false]
 	}],
-	"print": [[["values", "#any"]], (args, values) => {
+	"print": [[["values", Type.any|TypeMod.list]], (args, values) => {
 		var out = ""
 		for (var v of values) out += String(v)
 		insert_text(out)
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"concat": [[["strings", "#string"]], (args, strings) => {
+	"concat": [[["strings", Type.string|TypeMod.list]], (args, strings) => {
 		var out = ""
 		for (var s of strings) out += s
-		return ['string', out]
+		return [Type.string, out]
 	}],
-	"if": [[["expr", "any"],["t", "token"],["f", "token"]], (args, expr, t, f) => {
+	"if": [[["expr", Type.any],["t", Type.token],["f", Type.token]], (args, expr, t, f) => {
 		return expr ? resolve_token(t) : resolve_token(f)
 	}],
 	"list": [[], (args) => {
-		return ['list', args.map(x => resolve_token(x))]
+		return [Type.list, args.map(x => resolve_token(x))]
 	}],
-	"def-fun": [[["name", "symbol"], ["args", "list"], ["func", "#token"]], (_, name, args, func) => {
+	"def-fun": [[["name", Type.symbol], ["args", Type.list], ["func", Type.token|TypeMod.list]], (_, name, args, func) => {
 		define_function(name, args, func)
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"push": [[["list", "'list"],["values", "#token"]], (args, list, values) => {
+	"push": [[["list", Type.list|TypeMod.symbol],["values", Type.token|TypeMod.list]], (args, list, values) => {
 		for (var v of values) list.push(resolve_token(v))
 		return set_var(args[0], list)
 	}],
-	"pop": [[["list", "list"]], (args, list) => {
+	"pop": [[["list", Type.list]], (args, list) => {
 		var ret = list.pop()
-		return ret ? ret : ['bool', false]
+		return ret ? ret : [Type.boolean, false]
 	}],
-	"first": [[["list", "'list"]], (args, list) => {
-		return ['reference', [get_token(args[0]), 0]]
+	"first": [[["list", Type.list|TypeMod.symbol]], (args, list) => {
+		return [Type.reference, [get_token(args[0]), 0]]
 	}],
-	"last": [[["list", "'list"]], (args, list) => {
-		if (!list.length) return ['bool', false]
-		return ['reference', [get_token(args[0]), list.length - 1]]
+	"last": [[["list", Type.list|TypeMod.symbol]], (args, list) => {
+		if (!list.length) return [Type.boolean, false]
+		return [Type.reference, [get_token(args[0]), list.length - 1]]
 	}],
-	"rest": [[["list", "list"]], (args, list) => {
-		return ['list', list.slice(1)]
+	"rest": [[["list", Type.list]], (args, list) => {
+		return [Type.list, list.slice(1)]
 	}],
-	"index": [[["list", "'list"], ["index", "number"]], (args, list, index) => {
+	"index": [[["list", Type.list|TypeMod.symbol], ["index", Type.number]], (args, list, index) => {
 		var i = Math.min(Math.max(index, 0), list.length - 1)
-		return ['reference', [get_token(args[0]), i]]
+		return [Type.reference, [get_token(args[0]), i]]
 	}],
 	"stop": [[], (args) => {
 		subscene_change = 0
 		subscene_return = []
 		stop = true
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
 	"clear": [[], (args) => {
 		output.replaceChildren()
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
 	"scene-pop": [[], (args) => {
 		var scene = scene_stack.pop()
 		if (scene != undefined) enter_scene(scene)
 		else console.log("WARN: tried to pop without scenes in stack.")
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"scene-push": [[["scene-name", "string"]], (args, scene_name) => {
+	"scene-push": [[["scene-name", Type.string]], (args, scene_name) => {
 		scene_stack.push(current_scene)
 		var scene = scenes[scene_name]
 		if (!scene) console.log("WARN: Invalid scene", scene_name)
 		enter_scene(scene)
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"scene-jump": [[["scene-name", "string"]], (args, scene_name) => {
+	"scene-jump": [[["scene-name", Type.string]], (args, scene_name) => {
 		var scene = scenes[scene_name]
-		if (!scene) console.log("WARN: Invalid scene", scene_name, 'string')
+		if (!scene) console.log("WARN: Invalid scene", scene_name)
 		if (subscene_change) {
 			// scene change already in same expression
 			subscene_return.push(scene)
@@ -563,49 +583,49 @@ const funcs = {
 				subscene_return.push({source: current_source, index: current_index})
 			subscene_change = scene
 		}
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
-	"scene-change": [[["scene-name", "string"]], (args, scene_name) => {
+	"scene-change": [[["scene-name", Type.string]], (args, scene_name) => {
 		var scene = scenes[scene_name]
-		if (!scene) console.log("WARN: Invalid scene", scene_name, 'string')
+		if (!scene) console.log("WARN: Invalid scene", scene_name)
 		scene_stack = []
 		enter_scene(scene)
-		return ['bool', true]
+		return [Type.boolean, true]
 	}],
 	"rand": [[], (args) => {
 		var a = resolve_token(args[0])
-		if (a[0] == 'list') {
-			var l = get_value(args[0], 'list')
-			return ['reference', [get_token(args[0]), Math.floor(Math.random() * l.length)]]
+		if (a[0] == Type.list) {
+			var l = get_value(args[0], Type.list)
+			return [Type.reference, [get_token(args[0]), Math.floor(Math.random() * l.length)]]
 		}
-		var min = get_value(a, 'number')
-		var max = get_value(args[1], 'number')
-		return ['number', Math.floor(Math.random() * (max - min + 1) + min)]
+		var min = get_value(a, Type.number)
+		var max = get_value(args[1], Type.number)
+		return [Type.number, Math.floor(Math.random() * (max - min + 1) + min)]
 	}],
 	"length": [[], (args) => {
-		var l = get_value(args[0], 'any')
-		if (l.length) return ['number', l.length]
-		return ['bool', false]
+		var l = get_value(args[0], Type.any)
+		if (l.length) return [Type.number, l.length]
+		return [Type.boolean, false]
 	}],
 	"del": [[], (args) => {
 		var tok = get_token(args[0])
-		if (tok[0] == 'reference') {
+		if (tok[0] == Type.reference) {
 			var lst = resolve_token(tok[1][0])[1]
 			lst.splice(tok[1][1], 1)
-			return ['bool', true]
-		} else if (tok[0] == 'symbol') {
+			return [Type.boolean, true]
+		} else if (tok[0] == Type.symbol) {
 			var reslv = resolve_token(tok)
-			if (reslv[0] == 'reference') {
+			if (reslv[0] == Type.reference) {
 				var lst = resolve_token(reslv[1][0])[1]
 				lst.splice(reslv[1][1], 1)
 				return token(true)
-			} else if (reslv[0] == 'symbol') {
+			} else if (reslv[0] == Type.symbol) {
 				tok = reslv
 			}
 			delete variables[tok[1]]
-			return ['bool', true]
+			return [Type.boolean, true]
 		}
-		return ['bool', false]
+		return [Type.boolean, false]
 	}],
 }
 
@@ -619,16 +639,16 @@ function recursive_find_args(func, args) {
 		var et = e[0]
 		var o
 		switch (et) {
-			case 'symbol':
+			case Type.symbol:
 				if (args.includes(e[1])) {
 					if (out[e[1]]) out[e[1]].push([func, i])
 					else out[e[1]] = [[func, i]]
 				}
 				break
-			case 'function':
+			case Type.function:
 				o = recursive_find_args(e[1][1], args)
 				break
-			case 'list':
+			case Type.list:
 				o = recursive_find_args(e[1], args)
 				break
 		}
@@ -645,7 +665,7 @@ function recursive_find_args(func, args) {
 function define_function(name, args, func) {
 	var args = args instanceof Array ? args : parse_expression(args + '\n')
 	var definition_args = []
-	for (var p of args) definition_args.push([p[1][0][1], p[1][1][1]])
+	for (var p of args) definition_args.push([p[1][0][1], Type[p[1][1][1]]])
 	if (func instanceof Array) {
 		funcs[name] = [definition_args, func, recursive_find_args(func, definition_args.map((a) => {return a[0]}))]
 	} else {
@@ -660,13 +680,13 @@ function execute_function(name, args) {
 	if (func[1] instanceof Function) {
 		var ia = []
 		for (var i in func[0]) {
-			if (func[0][i][1][0] == '#') {
+			if (func[0][i][1] & TypeMod.list) {
 				var il = []
-				var lt = func[0][i][1].slice(1)
+				var lt = func[0][i][1] ^ TypeMod.list
 				if (i == func[0].length - 1) {
-					if (args.length == func[0].length && lt != 'token') {
+					if (args.length == func[0].length && lt != Type.token) {
 						var l = resolve_token(args[i])
-						if (l[0] == 'list') {
+						if (l[0] == Type.list) {
 							var el = []
 							for (var e of l[1])
 								el.push(get_value(e, lt))
@@ -677,15 +697,15 @@ function execute_function(name, args) {
 					for (var j = i; j < args.length; j++)
 						il.push(get_value(args[j], lt))
 				} else {
-					var l = get_value(args[i], 'list')
+					var l = get_value(args[i], Type.list)
 					for (var e of l[1]) il.push(get_value(e, lt))
 				}
 				ia.push(il)
 				continue
-			} else if (func[0][i][1][0] == '\'') {
+			} else if (func[0][i][1] & TypeMod.symbol) {
 				var tk = get_token(args[i])
-				if (tk[0] != 'symbol') console.log("WARN: Invalid variable argument for function", name)
-				var tt = func[0][i][1].slice(1)
+				if (tk[0] != Type.symbol) console.log("WARN: Invalid variable argument for function", name)
+				var tt = func[0][i][1] ^ TypeMod.symbol
 				ia.push(get_value(tk, tt))
 				continue
 			}
@@ -695,13 +715,13 @@ function execute_function(name, args) {
 	} else {
 		var ia = {}
 		for (var i in func[0]) {
-			if (func[0][i][1][0] == '#') {
+			if (func[0][i][1] & TypeMod.list) {
 				var il = []
-				var lt = func[0][i][1].slice(1)
+				var lt = func[0][i][1] ^ TypeMod.list
 				if (i == func[0].length - 1) {
-					if (args.length == func[0].length && lt != 'token') {
+					if (args.length == func[0].length && lt != Type.token) {
 						var l = resolve_token(args[i])
-						if (l[0] == 'list') {
+						if (l[0] == Type.list) {
 							ia[func[0][i][0]] = l
 							continue
 						}
@@ -709,15 +729,15 @@ function execute_function(name, args) {
 					for (var j = i; j < args.length; j++)
 						il.push([lt, get_value(args[j], lt)])
 				} else {
-					var l = get_value(args[i], 'list')
+					var l = get_value(args[i], Type.list)
 					for (var e of l[1]) il.push([lt, get_value(e, lt)])
 				}
-				ia[func[0][i][0]] = ['list', il]
+				ia[func[0][i][0]] = [Type.list, il]
 				continue
-			} else if (func[0][i][1][0] == '\'') {
+			} else if (func[0][i][1] & TypeMod.symbol) {
 				var tk = get_token(args[i])
-				if (tk[0] != 'symbol') console.log("WARN: Invalid variable argument for function", name)
-				var tt = func[0][i][1].slice(1)
+				if (tk[0] != Type.symbol) console.log("WARN: Invalid variable argument for function", name)
+				var tt = func[0][i][1] ^ TypeMod.symbol
 				if (resolve_token(tk)[0] != tt) console.log("WARN: Invalid variable argument for function", name)
 				ia[func[0][i][0]] = tk
 				continue
@@ -734,10 +754,22 @@ function execute_function(name, args) {
 	}
 }
 
-/*
-const functions = {
+function flatten_expression_tree(tree) {
+	switch (tree[0]) {
+		case Type.function:
+			console.log(Type.function + ":" +tree[1][0])
+			console.log(Type.list + ":" + tree[1][1].length)
+			tree[1][1].forEach((x) => flatten_expression_tree(x))
+			break
+		case Type.symbol:
+			console.log(Type.symbol + ":" + tree[1])
+			break
+		case Type.number:
+			console.log(Type.number + ":" + tree[1])
+			break
+		default: console.log("Unknown type: " + tree[0])
+	}
 }
-*/
 
 function parse_expression(expr) {
 	var parents = []
@@ -757,15 +789,15 @@ function parse_expression(expr) {
 			case '(':
 				var n
 				if (lst)
-					n = ['list', []]
+					n = [Type.list, []]
 				else
-					n = ['function', [funcs[buffer] ? buffer : "", []]]
+					n = [Type.function, [funcs[buffer] ? buffer : "", []]]
 				lst = false
 				if (current_node) {
 					parent_stack.push(current_node)
 					switch (current_node[0]) {
-						case 'function': current_node[1][1].push(sym ? ['function', ['sym', [n]]] : n); break
-						case 'list': current_node[1].push(sym ? ['function', ['sym', [n]]] : n); break
+						case Type.function: current_node[1][1].push(sym ? [Type.function, ['sym', [n]]] : n); break
+						case Type.list: current_node[1].push(sym ? [Type.function, ['sym', [n]]] : n); break
 						default: console.log("WARN: Invalid parent type", current_node[0])
 					}
 				} else {
@@ -776,18 +808,18 @@ function parse_expression(expr) {
 				break
 			case ')':
 				if (buffer) {
-					if (current_node[0] == 'function' && !current_node[1][0]) {
+					if (current_node[0] == Type.function && !current_node[1][0]) {
 						current_node[1][0] = buffer
 						if (!funcs[buffer]) console.log("WARN: Invalid function", buffer)
 					} else {
 						var tk = token(buffer)
 						if (sym) {
-							tk = ['function', ['sym', [tk]]]
+							tk = [Type.function, ['sym', [tk]]]
 							sym = false
 						}
 						switch (current_node[0]) {
-							case 'function': current_node[1][1].push(tk); break
-							case 'list': current_node[1].push(tk); break
+							case Type.function: current_node[1][1].push(tk); break
+							case Type.list: current_node[1].push(tk); break
 						}
 					}
 				}
@@ -798,7 +830,7 @@ function parse_expression(expr) {
 				if (!buffer) break
 				var tk = token(buffer)
 				if (sym) {
-					tk = ['function', ['sym', [tk]]]
+					tk = [Type.function, ['sym', [tk]]]
 					sym = false
 				}
 
@@ -806,7 +838,7 @@ function parse_expression(expr) {
 					parents.push(tk)
 				} else {
 					switch (current_node[0]) {
-						case 'function':
+						case Type.function:
 							if (!current_node[1][0]) {
 								current_node[1][0] = buffer
 								if (!funcs[buffer]) console.log("WARN: Invalid function", buffer)
@@ -814,7 +846,7 @@ function parse_expression(expr) {
 								current_node[1][1].push(tk)
 							}
 							break
-						case 'list':
+						case Type.list:
 							current_node[1].push(tk)
 							break
 					}
