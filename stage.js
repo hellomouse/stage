@@ -307,6 +307,9 @@ function token(tok) {
 }
 
 const coercion_functions = {
+	"list": {
+		"boolean": (list) => { return ["boolean", !!list.length] }
+	},
 	"number": {
 		"string": (num) => { return ["string", num.toString()] }
 	},
@@ -926,9 +929,9 @@ function parse_legacy_play() {
 	}
 	if (!scenes["start"]) {
 		scenes["start"] = {source: "play", index: 0}
-		return false
+		return true
 	}
-	return true
+	return false
 }
 
 function play_file(file) {
