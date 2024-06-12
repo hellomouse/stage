@@ -32,7 +32,7 @@ const TypeMod = {
 	symbol: (1 << 8)
 }
 
-const stage_version = "20240611";
+const stage_version = "20240612";
 let play_chunks = {
 	"STGE": {},
 	"INFO": {},
@@ -1057,16 +1057,20 @@ function parse_legacy_play() {
 	return false
 }
 
+function play_determine() {
+	var magic = play.substring(0, 10)
+	if (magic == "STAGE PLAY") parse_play()
+	else parse_legacy_play()
+	document.getElementById("load")?.remove()
+	restart()
+}
+
 function play_file(file) {
 	var reader = new FileReader()
 	reader.readAsText(file)
 	reader.onload = readerEvent => {
 		play = readerEvent.target.result
-		var magic = play.substring(0, 10)
-		if (magic == "STAGE PLAY") parse_play()
-		else parse_legacy_play()
-		document.getElementById("load")?.remove()
-		restart()
+		play_determine()
 	}
 }
 
@@ -1078,7 +1082,7 @@ window.onload = e => {
 	if (l) {
 		fetch(`https://api.github.com/gists/${l}`, {cache: "no-cache"})
 			.then(function(response) { return response.json() })
-			.then(function(json) { play = Object.values(json.files)[0].content; parse_play() })
+			.then(function(json) { play = Object.values(json.files)[0].content; play_determine() })
 		return
 	}
 
@@ -1086,7 +1090,7 @@ window.onload = e => {
 	if (l) {
 		fetch(l, {cache: "no-cache"})
 			.then(function(response) { return response.text() })
-			.then(function(text) { play = text; parse_play() })
+			.then(function(text) { play = text; play_determine() })
 		return
 	}
 }
