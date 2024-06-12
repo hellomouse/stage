@@ -162,7 +162,7 @@ p {
 	margin: 8px 0;
 }
 
-.action {
+.action, a {
 	text-decoration: none;
 	cursor: pointer;
 	color: turquoise;
@@ -182,6 +182,7 @@ p {
 }
 
 #output {
+	width: 100%;
 	display: block;
 	white-space: wrap;
 	overflow-wrap: break-word;
@@ -224,11 +225,12 @@ p {
 		<div side='right' id='divider'></div>
 		<section id='right-pane' style='width: 480px;'>
 			<div id='top-bar'>
-				<span class='active' onclick='show_tab(event,"output")'>Output</span><span onclick='show_tab(event,"help")'>Help</span>
+				<span class='active' onclick='show_tab(event,"output")'>Output</span><span onclick='show_tab(event,"help")'>Help</span><span onclick='var e=document.createElement("script");e.src="tutorial/tutorial.js";document.head.appendChild(e);event.target.setAttribute("onclick","show_tab(event,\"tutorial\")");event.target.click()'>Tutorial</span>
 			</div>
 			<div id='right-pane-container'>
 				<div id='output'></div>
-				<div id='help' style='display: none;'><iframe id='help-iframe' src='reference/'></iframe></div>
+				<div id='help' style='display: none;'><iframe id='help-iframe' src='reference/index.html'></iframe></div>
+				<div id='tutorial' style='display: none'></div>
 			</div>
 		</section>
 	</body>

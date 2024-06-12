@@ -33,7 +33,12 @@ const TypeMod = {
 }
 
 const stage_version = "20240611";
-let play_chunks = {};
+let play_chunks = {
+	"STGE": {},
+	"INFO": {},
+	"SCNE": {},
+	"EXTS": {}
+};
 
 let sources = {};
 let current_source;
@@ -47,6 +52,8 @@ let play;
 let action_depth = 0;
 let container;
 let output;
+let text_output;
+let action_output;
 let variables = {}
 
  // this is a bit bad.
@@ -126,7 +133,7 @@ function input(i) {
 	input.type = "text"
 	input.placeholder = label
 	input.setAttribute("onkeydown", `input_check(event, ${i}, ${action_depth}, "${current_source}")`)
-	output.appendChild(input)
+	action_output.appendChild(input)
 	stop = true // blocking
 	return i
 }
@@ -173,7 +180,7 @@ function text_format(text, parent_element) {
 function insert_text(text) {
 	var p = document.createElement("p")
 	text_format(text, p)
-	output.appendChild(p)
+	text_output.appendChild(p)
 }
 
 function action(i, si) {
@@ -188,7 +195,7 @@ function action(i, si) {
 	} else {
 		a.href = `javascript:execute_action(${si}, ${action_depth}, "${current_source}")`
 	}
-	output.appendChild(a)
+	action_output.appendChild(a)
 	return i
 }
 
@@ -204,20 +211,26 @@ function evaluate(i, si) {
 	if (si && get_value(result, Type.any)) enter_subscene(si)
 	else if (!si) {
 		set_var("status", result)
-		var c = checks[get_value(result)]
-		if (c) enter_subscene(c.index, c.source)
+		if (checks.length) {
+			for (var c of checks) {
+				var val = c[0]
+				if (!get_value(execute_function("=", [result, val]), Type.boolean))
+					continue
+				enter_subscene(c[1].index, c[1].source)
+				break
+			}
+		}
 	}
 	return i
 }
 
-let checks = {}
+let checks = []
 
 function check(i, si) {
 	var t = ""
 	while (play[++i] && play[i] != '\n') t += play[i]
 	current_index = i
-	var result = get_value(token(t))
-	if (result != null) checks[result] = {source: current_source, index: si}
+	if (t) checks.push([token(t), {source: current_source, index: si}])
 	return i
 }
 
@@ -273,11 +286,23 @@ function enter_scene(s) {
 	});
 }
 
+function increment_action_depth() {
+	action_depth++
+	if (play_chunks.STGE["action-clear"]) {
+		clear_output()
+	} else {
+		output.appendChild(document.createElement("hr"))
+		if (play_chunks.STGE["action-separation"]) {
+			output.appendChild(text_output = document.createElement("div"))
+			output.appendChild(action_output = document.createElement("div"))
+		}
+	}
+}
+
 function execute_action(si, depth, source, blocking = false) {
 	if (depth != action_depth)
 		return
-	action_depth++
-	output.appendChild(document.createElement("hr"))
+	increment_action_depth()
 	stop = false
 	current_source = source
 	if (!blocking) action_stack.push({source: source, index: si})
@@ -293,7 +318,7 @@ function input_check(e, si, depth, source) {
 		e.preventDefault()
 		current_source = source
 		set_var("status", [Type.string, e.target.value])
-		action_depth++
+		increment_action_depth()
 		output.appendChild(document.createElement("hr"))
 		stop = false
 		process_scene(si)
@@ -304,10 +329,11 @@ function input_check(e, si, depth, source) {
 /* EXPRESSIONS */
 /* ----------- */
 
+// Used in STGE chunk parsing.
+const bool_re = /^(yes|no|true|false|t|f)$/
 function token(tok) {
 	const string_re = /(^".*"$)/
 	const pair_re = /^.+:.+$/
-	const bool_re = /^(yes|no|true|false|t|f)$/
 	if (Array.isArray(tok))
 		return [Type.list, tok]
 	if (string_re.exec(tok))
@@ -329,11 +355,15 @@ const coercion_functions = {
 		[Type.boolean]: (list) => { return [Type.boolean, !!list.length] }
 	},
 	[Type.number]: {
-		[Type.string]: (num) => { return [Type.string, num.toString()] }
+		[Type.string]: (num) => { return [Type.string, num.toString()] },
+		[Type.boolean]: (num) => { return [Type.boolean, num != 0] }
 	},
 	[Type.string]: {
 		[Type.number]: (str) => { return !isNaN(str) && !isNaN(parseFloat(str)) ? [Type.string, Number(str)] : null },
 		[Type.symbol]: (str) => { return [Type.symbol, str] }
+	},
+	[Type.boolean]: {
+		[Type.number]: (bool) => { return [Type.number, +bool] }
 	}
 }
 
@@ -377,7 +407,7 @@ function get_value(v, type) {
 	if (type == Type.token)
 		return v
 	v = get_token_type(v, type)
-	return v[1]
+	return v && v[1]
 }
 
 function get_token(v) {
@@ -461,9 +491,17 @@ const funcs = {
 		}
 		return [Type.boolean, true]
 	}],
-	"=": [[["first", Type.any], ["rest", Type.any|TypeMod.list]], (args, first, rest) => {
-		for (var n of rest)
+	"=": [[["first", Type.token], ["rest", Type.token|TypeMod.list]], (args, first, rest) => {
+		for (var n of rest) {
+			n = coerce_token(n, first[0])
+			if (first[1] != n[1]) return [Type.boolean, false]
+		}
+		return [Type.boolean, true]
+	}],
+	"==": [[["first", Type.any], ["rest", Type.any|TypeMod.list]], (args, first, rest) => {
+		for (var n of rest) {
 			if (first != n) return [Type.boolean, false]
+		}
 		return [Type.boolean, true]
 	}],
 	"rem": [[["dividend", Type.number], ["divisor", Type.number]], (args, dividend, divisor) => {
@@ -575,25 +613,25 @@ const funcs = {
 		return [Type.boolean, true]
 	}],
 	"clear": [[], (args) => {
-		output.replaceChildren()
+		clear_output()
 		return [Type.boolean, true]
 	}],
 	"scene-pop": [[], (args) => {
 		var scene = scene_stack.pop()
 		if (scene != undefined) enter_scene(scene)
-		else console.log("WARN: tried to pop without scenes in stack.")
+		else return [Type.boolean, false]
 		return [Type.boolean, true]
 	}],
 	"scene-push": [[["scene-name", Type.string]], (args, scene_name) => {
 		scene_stack.push(current_scene)
 		var scene = scenes[scene_name]
-		if (!scene) console.log("WARN: Invalid scene", scene_name)
+		if (!scene) return [Type.boolean, false]
 		enter_scene(scene)
 		return [Type.boolean, true]
 	}],
 	"scene-jump": [[["scene-name", Type.string]], (args, scene_name) => {
 		var scene = scenes[scene_name]
-		if (!scene) console.log("WARN: Invalid scene", scene_name)
+		if (!scene) return [Type.boolean, false]
 		if (subscene_change) {
 			// scene change already in same expression
 			subscene_return.push(scene)
@@ -608,7 +646,7 @@ const funcs = {
 	}],
 	"scene-change": [[["scene-name", Type.string]], (args, scene_name) => {
 		var scene = scenes[scene_name]
-		if (!scene) console.log("WARN: Invalid scene", scene_name)
+		if (!scene) return [Type.boolean, false]
 		scene_stack = []
 		enter_scene(scene)
 		return [Type.boolean, true]
@@ -899,7 +937,7 @@ function parse_expression(expr) {
 function restart() {
 	variables = {}
 	action_depth = 0
-	output.replaceChildren()
+	clear_output()
 	scene_stack = []
 	enter_scene(scenes["start"])
 }
@@ -907,6 +945,17 @@ function restart() {
 /* -------------- */
 /* FRONT HANDLING */
 /* -------------- */
+
+function clear_output() {
+	output.replaceChildren()
+	if (play_chunks.STGE["action-separation"]) {
+		output.appendChild(text_output = document.createElement("div"))
+		output.appendChild(action_output = document.createElement("div"))
+	} else {
+		text_output = output
+		action_output = output
+	}
+}
 
 function file_drop(e) {
 	e.preventDefault();
@@ -959,10 +1008,19 @@ function parse_play() {
 			}
 		}
 	}
+	
+	for (var k of Object.keys(play_chunks.STGE)) {
+		var val = play_chunks.STGE[k]
+		if (bool_re.exec(val))
+			play_chunks.STGE[k] = val.startsWith("t") || val.startsWith("y")
+	}
 
 	if (play_chunks.STGE?.version) {
-		// Check version
+		// version check
 	}
+
+	play_chunks.STGE["action-clear"] = play_chunks.STGE["action-clear"] ?? false
+	play_chunks.STGE["action-separation"] = play_chunks.STGE["action-separation"] ?? false
 
 	sources["play"] = play
 	if (Object.keys(play_chunks.SCNE).length <= 0) {
@@ -982,7 +1040,7 @@ function parse_legacy_play() {
 	var index = -1
 	variables = {}
 	action_depth = 0
-	output.replaceChildren()
+	clear_output()
 	scene_stack = []
 	scenes = []
 	sources["play"] = play

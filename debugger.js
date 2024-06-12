@@ -38,7 +38,7 @@ function run(scene) {
 		scenes[s] = {source: s, index: 0}
 	variables = {}
 	action_depth = 0
-	output.replaceChildren()
+	clear_output()
 	scene_stack = []
 	enter_scene(scenes[scene])
 }
@@ -121,7 +121,7 @@ set_ref = (ref, value) => {
 	}
 	return ret
 }
-
+let editor_autosave = true
 window.onload = e => {
 	file_list = document.getElementById("file-list")
 	code_area = document.getElementById("code-area")
@@ -156,7 +156,7 @@ window.onload = e => {
 		}
 	})
 	setInterval(() => {
-		save()
+		if (editor_autosave) save()
 	}, 1000 * 60) // every minute
 }
 
@@ -194,7 +194,7 @@ function export_play() {
 	})
 	var out = `STAGE PLAY
 STGE
-Version:  ${stage_version}
+version: ${stage_version}
 EGTS
 INFO
 Name: ${play_name}
@@ -212,6 +212,37 @@ ${data}`
 	element.click()
 }
 
+function import_play_from_text(text) {
+	play = text
+	var magic = play.substring(0, 10)
+	var legacy = (magic != "STAGE PLAY")
+	var lout = legacy
+	if (!legacy) parse_play()
+	else lout = parse_legacy_play()
+	Object.keys(editor_contents).forEach(k => remove_file(k))
+	var sts = {}
+	Object.keys(sources).forEach(k => sts[k] = [])
+	Object.keys(scenes).forEach(k => {
+		new_scene(k)
+		sts[scenes[k].source].push(k)
+	})
+	for (var k of Object.keys(sts)) {
+		var sortable = []
+		sts[k].forEach(k => sortable.push([k, scenes[k].index]))
+		sortable.sort((a, b) => a[1] - b[1])
+		var test = []
+		for (var i = 0; i < sortable.length - 1; i++) {
+			var start = sortable[i][1] + legacy // legacy has an extra newline at the start.
+			var end = sortable[i + 1][1]
+			if (legacy) end = sources[k].lastIndexOf('\n', end - 1)
+			editor_contents[sortable[i][0]] = (sources[k].substring(start, end))
+		}
+		editor_contents[sortable[sortable.length - 1][0]] = (sources[k].substring(sortable[sortable.length - 1][1]))
+	}
+	if (lout) editor_contents["start"] = `!(scene-change "${sts["play"][0]}")`
+	change_scene("start")
+}
+
 function import_play() {
 	var element = document.createElement('input')
 	element.setAttribute('type', 'file')
@@ -219,33 +250,7 @@ function import_play() {
 		var reader = new FileReader()
 		reader.readAsText(e.target.files[0])
 		reader.onload = readerEvent => {
-			play = readerEvent.target.result
-			var magic = play.substring(0, 10)
-			var legacy = (magic != "STAGE PLAY")
-			var lout = legacy
-			if (!legacy) parse_play()
-			else lout = parse_legacy_play()
-			Object.keys(editor_contents).forEach(k => remove_file(k))
-			var sts = {}
-			Object.keys(sources).forEach(k => sts[k] = [])
-			Object.keys(scenes).forEach(k => {
-				new_scene(k)
-				sts[scenes[k].source].push(k)
-			})
-			for (var k of Object.keys(sts)) {
-				var sortable = []
-				sts[k].forEach(k => sortable.push([k, scenes[k].index]))
-				sortable.sort((a, b) => a[1] - b[1])
-				var test = []
-				for (var i = 0; i < sortable.length - 1; i++) {
-					var start = sortable[i][1] + legacy // legacy has an extra newline at the start.
-					var end = sortable[i + 1][1]
-					if (legacy) end = sources[k].lastIndexOf('\n', end - 1)
-					editor_contents[sortable[i][0]] = (sources[k].substring(start, end))
-				}
-				editor_contents[sortable[sortable.length - 1][0]] = (sources[k].substring(sortable[sortable.length - 1][1]))
-			}
-			if (lout) editor_contents["start"] = `!(scene-change "${sts["play"][0]}")`
+			import_play_from_text(readerEvent.target.result)
 		}
 	}
 	element.click()
