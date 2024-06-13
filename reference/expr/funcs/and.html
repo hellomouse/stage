@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>and</h3>
+		<h4>Syntax</h4>
+		<div>(and #any)</div>
+		<h4>Return</h4>
+		<div>true if all arguments are true.</div>
+		<h4>Description</h4>
+		<div><b>and</b> returns true if and only if all arguments are true. This function is short-circuiting, meaning after a false argument rest of the arguments are not resolved.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ false
+!(print (and true false))
+/ true
+!(print (and true true))
+/ false, wont print 'short-circuit'
+!(print (and false (print "short-circuit")))
+/ true, will print 'short-circuit'
+!(print (and true (print "short-circuit")))</pre></label>
+	</body>
+</html>

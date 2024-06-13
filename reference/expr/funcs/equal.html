@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>=</h3>
+		<h4>Syntax</h4>
+		<div>(= first:token rest:#token)</div>
+		<h4>Return</h4>
+		<div>true if first is equal to rest, otherwise false.</div>
+		<h4>Description</h4>
+		<div><b>=</b> does a non-strict equals comparison, attempting to coerce rest to the same type as first.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ true
+!(print (= 1 "1" true))
+/ false
+!(print (= 1 "2" false))</pre></label>
+	</body>
+</html>

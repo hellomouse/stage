@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>do</h3>
+		<h4>Syntax</h4>
+		<div>(do #any)</div>
+		<h4>Return</h4>
+		<div>true.</div>
+		<h4>Description</h4>
+		<div><b>do</b> resolves all arguments given like <a href='expr/funcs/get.html'>get</a>, but also recursively steps into lists and resolves element values.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(set x #((print "a") (print "b") (print "c")))
+/ will print a, b, and c.
+!(do x)</pre></label>
+	</body>
+</html>

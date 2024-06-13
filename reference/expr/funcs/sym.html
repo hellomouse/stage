@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>sym</h3>
+		<h4>Syntax</h4>
+		<div>(sym tok:token)</div>
+		<h4>Return</h4>
+		<div>returns tok as is without resolving.</div>
+		<h4>Description</h4>
+		<div><b>sym</b> returns tok without resolving. sym has a shorthand in the form of <code>'</code> which can be inserted before any token in expressions.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(set x 5)
+/ this will set y to contain the symbol x
+!(set y (sym x))
+/ using the ' shorthand
+!(set z 'x)
+/ note how this sets w to 5 
+!(set w x)</pre></label>
+	</body>
+</html>

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>def-fun</h3>
+		<h4>Syntax</h4>
+		<div>(def-fun name:symbol arguments:#pair func:#token)</div>
+		<h4>Return</h4>
+		<div>true.</div>
+		<h4>Description</h4>
+		<div><b>def-fun</b> is used to define new functions, and can also be used to overwrite old ones including internal functions.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ define a function that adds two numbers
+!(def-fun add #(x:number y:number) (+ x y))
+!(print (add 1 1))</pre></label>
+	</body>
+</html>

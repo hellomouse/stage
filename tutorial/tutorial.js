@@ -355,6 +355,78 @@ let tutorials = {
 				textbox.set_text("End of tutorial.")
 			}
 		],
+		"Scene changing": [
+			   () => {
+				fetch("tutorial/tut3.play", {cache: "no-cache"})
+					.then(function(response) { return response.text() })
+					.then(function(text) { import_play_from_text(text) })
+				the_consumer_of_clicks.toggle_consumption(true)
+				textbox.set_text("Scene changing is done with expression, this tutorial will only explain how to change scenes.")
+			}, () => {
+				highlight.highlight(document.querySelector("#file-list"))
+				textbox.set_text("In this play we have two scenes, lets look at how we can switch to the 'tutorial' scene from 'start'.")
+			}, () => {
+				highlight.highlight(null)
+				textbox.set_text("There are two options for switching scenes, 'scene-change' and 'scene-push', lets take a look at the first one.")
+			}, () => {
+				code_area.value = "]Start scene.\n!(scene-change \"tutorial\")"
+				textbox.set_text("The '!' character is the 'execute' character, its only function is to run expressions. If you want to know more look for the 'function' type in the help tab.")
+			}, () => {
+				textbox.set_text("In this example, we call the 'scene-change' function with the name of the scene as a string argument. Note the double quotes, strings or in other words text has to be in double quotes.")
+			}, () => {
+				document.querySelector("#right-pane > #top-bar >:nth-child(1)").click()
+				click_to_continue(document.querySelector("#middle-pane > #top-bar >:nth-child(2)"), true)
+				textbox.set_text("Now, lets see what happens when this is ran.")
+			}, () => {
+				highlight.highlight(document.querySelector("#output"))
+				the_consumer_of_clicks.toggle_consumption(true)
+				textbox.toggle_continue(true)
+				textbox.set_text("You can see that the output contains more than we have in the 'start' scene.")
+			}, () => {
+				click_to_continue(document.querySelector(".file[scene='tutorial']"), true)
+				textbox.set_text("Have a look at the 'tutorial' scene.")
+			}, () => {
+				click_to_continue(document.querySelector("#middle-pane > #top-bar >:nth-child(1)"), true)
+				textbox.set_text("Lets make a third scene to change to from this one.")
+			}, () => {
+				code_area.value = "]Your scene."
+				click_to_continue(document.querySelector(".file[scene='tutorial']"), true)
+				textbox.set_text("Currently no other scene will change to this one, lets change that. Go back to the 'tutorial' scene.")
+			}, () => {
+				highlight.highlight(null)
+				textbox.toggle_continue(true)
+				textbox.set_text("Add a scene change to the end of this scene.<br>As a reminder: <code>!(scene-change \"scene\")</code> on its own line, then replace the 'scene' with the name of the scene you made. Remember that your scene name must be in double quotes.")
+			}, () => {
+				click_to_continue(document.querySelector("#middle-pane > #top-bar >:nth-child(3)"), true)
+				textbox.set_text("Press the 'Start' button, which starts the play from the 'start' scene.")
+			}, () => {
+				click_to_continue(document.querySelector("#output > .action"), true)
+				textbox.set_text("After pressing the action, we should change to your scene.")
+			}, () => {
+				highlight.highlight(null)
+				textbox.toggle_continue(true)
+				textbox.set_text("Good, now lets look at 'scene-push'. Change the 'scene-change' to 'scene-push'.<br>Like this: <code>!(scene-push \"scene\")</code> with 'scene' replaced with the name of your scene.")
+			}, () => {
+				click_to_continue(document.querySelector("#file-list>:last-child"), true)
+				textbox.set_text("The difference between 'scene-change' and 'scene-push' is that 'scene-push' stores previous scenes so that we can go back to them. Lets have a look at that, go to your scene.")
+			}, () => {
+				highlight.highlight(null)
+				textbox.toggle_continue(true)
+				textbox.set_text("Add <code>!(scene-pop)</code> to the end of the scene on its own line.")
+			}, () => {
+				click_to_continue(document.querySelector("#middle-pane > #top-bar >:nth-child(3)"), true)
+				textbox.set_text("Lets see what happens, press 'Start'.")
+			}, () => {
+				click_to_continue(document.querySelector("#output > .action"), true)
+				textbox.set_text("Click the action.")
+			}, () => {
+				highlight.highlight(null)
+				textbox.toggle_continue(true)
+				textbox.set_text("You can see it went back to the 'tutorial' scene. Note that 'scene-change' will clear previous scenes, and you wont be able to 'scene-pop' after a 'scene-change'.")
+			}, () => {
+				textbox.set_text("End of tutorial.")
+			}, 
+		]
 	}
 }
 let current_tutorial = null

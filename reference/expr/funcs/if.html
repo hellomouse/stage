@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>if</h3>
+		<h4>Syntax</h4>
+		<div>(if expr:any true-expr:token false-expr:token)</div>
+		<h4>Return</h4>
+		<div>true-expr if expr is true, otherwise false-expr.</div>
+		<h4>Description</h4>
+		<div><b>if</b> checks if expr is true and then resolves true-expr, if expr is false then false-expr is resolved.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+/ prints false
+!(if false (print "true") (print "false"))
+/ prints true
+!(if true (print "true") (print "false"))</pre></label>
+	</body>
+</html>

@@ -352,7 +352,8 @@ function token(tok) {
 
 const coercion_functions = {
 	[Type.list]: {
-		[Type.boolean]: (list) => { return [Type.boolean, !!list.length] }
+		[Type.boolean]: (list) => { return [Type.boolean, !!list.length] },
+		[Type.number]: (list) => { return [Type.number, list.length] },
 	},
 	[Type.number]: {
 		[Type.string]: (num) => { return [Type.string, num.toString()] },
@@ -369,6 +370,8 @@ const coercion_functions = {
 
 function coerce_token(v, type) {
 	if (v[0] == type) // v already type
+		return v
+	if (type == Type.symbol && v[0] == Type.reference)
 		return v
 	if (v[0] == Type.reference)
 		v = resolve_token(v)
@@ -474,7 +477,7 @@ const funcs = {
 		for (var num of divisor) dividend /= num
 		return [Type.number, dividend]
 	}],
-	"%": [[["dividend", Type.number], ["divisor", Type.number|TypeMod.list]], (args, dividend, divisor) => {
+	"%": [[["dividend", Type.number], ["divisor", Type.number]], (args, dividend, divisor) => {
 		return [Type.number, ((dividend % divisor) + divisor) % divisor]
 	}],
 	">": [[["first", Type.number], ["rest", Type.number|TypeMod.list]], (args, first, rest) => {
@@ -500,7 +503,7 @@ const funcs = {
 	}],
 	"==": [[["first", Type.any], ["rest", Type.any|TypeMod.list]], (args, first, rest) => {
 		for (var n of rest) {
-			if (first != n) return [Type.boolean, false]
+			if (first !== n) return [Type.boolean, false]
 		}
 		return [Type.boolean, true]
 	}],
@@ -550,17 +553,17 @@ const funcs = {
 		subscene_change = action_stack[action_stack.length - 1]
 		return [Type.boolean, true]
 	}],
-	"not": [[["value", Type.any]], (args, value) => {
+	"not": [[["value", Type.boolean]], (args, value) => {
 		return [Type.boolean, !value]
 	}],
 	"and": [[], (args) => {
 		for (var n of args)
-			if (!(1 && get_value(n, Type.any))) return [Type.boolean, false]
+			if (!(1 && get_value(n, Type.boolean))) return [Type.boolean, false]
 		return [Type.boolean, true]
 	}],
 	"or": [[], (args) => {
 		for (var n of args)
-			if (0 || get_value(n, Type.any)) return [Type.boolean, true]
+			if (0 || get_value(n, Type.boolean)) return [Type.boolean, true]
 		return [Type.boolean, false]
 	}],
 	"print": [[["values", Type.any|TypeMod.list]], (args, values) => {
@@ -693,7 +696,7 @@ define_function("-1", "var:symbol", parse_expression("(set var (- var 1))"))
 
 function recursive_find_args(func, args) {
 	var out = {}
-	for (var i in func) {
+	for (var i = 0; i < func.length; i++) {
 		var e = func[i]
 		var et = e[0]
 		var o
@@ -750,7 +753,7 @@ function execute_function(name, args) {
 	// internal
 	if (func[1] instanceof Function) {
 		var ia = []
-		for (var i in func[0]) {
+		for (var i = 0; i < func[0].length; i++) {
 			if (func[0][i][1] & TypeMod.list) {
 				var il = []
 				var lt = func[0][i][1] ^ TypeMod.list
@@ -764,6 +767,8 @@ function execute_function(name, args) {
 							ia.push(el)
 							continue
 						}
+						il.push(get_value(l, lt))
+						i++
 					}
 					for (var j = i; j < args.length; j++)
 						il.push(get_value(args[j], lt))
@@ -785,7 +790,7 @@ function execute_function(name, args) {
 		return func[1](args, ...ia)
 	} else {
 		var ia = {}
-		for (var i in func[0]) {
+		for (var i = 0; i < func[0].length; i++) {
 			if (func[0][i][1] & TypeMod.list) {
 				var il = []
 				var lt = func[0][i][1] ^ TypeMod.list
@@ -796,6 +801,8 @@ function execute_function(name, args) {
 							ia[func[0][i][0]] = l
 							continue
 						}
+						il.push(get_token_type(l, lt))
+						i++
 					}
 					for (var j = i; j < args.length; j++)
 						il.push(get_token_type(args[j], lt))

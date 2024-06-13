@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Stage - reference</title>
+		<meta charset="UTF-8">
+	</head>
+	<body>
+		<h3>rand</h3>
+		<h4>Syntax</h4>
+		<div>(rand list) or (rand min max)</div>
+		<h4>Return</h4>
+		<div>random element from list, or random number between min and max (inclusive).</div>
+		<h4>Description</h4>
+		<div><b>rand</b> can be used to get a random element from a list, or a random number.</div>
+		<h4>Examples</h4>
+		<label class="cont">Click to reveal example
+			<input type="checkbox" />
+			<pre>
+!(set x #("a" "b" "c" "d"))
+/ prints a random string from the list.
+!(print (rand x))
+/ prints a random number from 0 to 4.
+!(print (rand 0 4))</pre></label>
+	</body>
+</html>
