@@ -219,6 +219,7 @@ function evaluate(i, si) {
 				enter_subscene(c[1].index, c[1].source)
 				break
 			}
+			checks = []
 		}
 	}
 	return i
