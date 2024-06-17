@@ -495,8 +495,10 @@ const funcs = {
 		return [Type.boolean, true]
 	}],
 	"=": [[["first", Type.token], ["rest", Type.token|TypeMod.list]], (args, first, rest) => {
+		// HACK, due to how internal functions work this uses Type.token to get tokens.
+		first = resolve_token(first)
 		for (var n of rest) {
-			n = coerce_token(n, first[0])
+			n = coerce_token(resolve_token(n), first[0])
 			if (first[1] != n[1]) return [Type.boolean, false]
 		}
 		return [Type.boolean, true]

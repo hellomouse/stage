@@ -14,7 +14,8 @@ body {
 	overflow: hidden;
 	margin: 0;
 	white-space: nowrap;
-	display: flex;
+	width: 100vw;
+	height: 100vh;
 }
 
 #top-bar {
@@ -153,6 +154,16 @@ iframe {
 	width: 100%;
 }
 
+#file-list {
+	overflow: scroll;
+	height: 100%;
+}
+
+#left-pane-container, #right-pane-container {
+	height: 100%;
+	overflow: hidden;
+}
+
 #right-pane-container, #help {
 	flex-grow: 1;
 	display: flex;
@@ -186,52 +197,69 @@ p {
 	display: block;
 	white-space: wrap;
 	overflow-wrap: break-word;
+}
+
+#right-pane-container {
 	overflow-y: scroll;
 	scrollbar-width: none;
 }
 
-#output::-webkit-scrollbar {
+#ihatecss {
+	display: flex;
+	width: 100%;
+	height: 100%;
+}
+
+#right-pane-container::-webkit-scrollbar {
 	display: none;
+}
+
+section {
+	display: flex;
+	height: 100%;
+	overflow: hidden;
 }
 		</style>
 	</head>
 	<body>
-		<section id='left-pane' style='width: 480px;'>
-			<div id='top-bar'>
-				<span class='active' onclick='show_tab(event,"file-list")'>Scenes</span><span onclick='show_tab(event,"variables")'>Variables</span><span onclick='show_tab(event,"metadata")'>Info</span>
-			</div>
-			<div id='left-pane-container'>
-				<div id='file-list'>
+		<div id='ihatecss'>
+			<section id='left-pane' style='width: 480px;'>
+				<div id='top-bar'>
+					<span class='active' onclick='show_tab(event,"file-list")'>Scenes</span><span onclick='show_tab(event,"variables")'>Variables</span><span onclick='show_tab(event,"metadata")'>Info</span>
 				</div>
-				<div id='variables' style='display: none;'>
-				</div>
-				<div id='metadata' style='display: none;'>
-					<div style='display: grid; grid-template-columns: auto auto;'>
-						<label>Name:</label> <input id='play-name'>
-						<label>Author:</label> <input id='play-author'>
+				<div id='left-pane-container'>
+					<div id='file-list'>
+					</div>
+					<div id='variables' style='display: none;'>
+					</div>
+					<div id='metadata' style='display: none;'>
+						<div style='display: grid; grid-template-columns: auto auto;'>
+							<label>Name:</label> <input id='play-name'>
+							<label>Author:</label> <input id='play-author'>
+						</div>
 					</div>
 				</div>
-			</div>
-		</section>
-		<div side='left' id='divider'></div>
-		<section id='middle-pane'>
-			<div id='top-bar'>
-				<span onclick='new_button()'>New</span><span onclick='run()'>Run</span><span onclick='run("start")'>Start</span><span onclick='save()'>Save</span><span onclick='export_play()'>Export</span><span onclick='import_play()'>Import</span>
-			</div>
-			<textarea id='code-area' disabled></textarea>
-			<div id='bottom-bar'>
-			</div>
-		</section>
-		<div side='right' id='divider'></div>
-		<section id='right-pane' style='width: 480px;'>
-			<div id='top-bar'>
-				<span class='active' onclick='show_tab(event,"output")'>Output</span><span onclick='show_tab(event,"help")'>Help</span><span onclick='var e=document.createElement("script");e.src="tutorial/tutorial.js";document.head.appendChild(e);event.target.setAttribute("onclick","show_tab(event,\"tutorial\")");event.target.click()'>Tutorial</span>
-			</div>
-			<div id='right-pane-container'>
-				<div id='output'></div>
-				<div id='help' style='display: none;'><iframe id='help-iframe' src='reference/index.html'></iframe></div>
-				<div id='tutorial' style='display: none'></div>
-			</div>
-		</section>
+			</section>
+			<div side='left' id='divider'></div>
+			<section id='middle-pane'>
+				<div id='top-bar'>
+					<span onclick='new_button()'>New</span><span onclick='run()'>Run</span><span onclick='run("start")'>Start</span><span onclick='save()'>Save</span><span onclick='export_play()'>Export</span><span onclick='import_play()'>Import</span>
+				</div>
+				<textarea id='code-area' disabled></textarea>
+				<div id='bottom-bar'>
+				</div>
+			</section>
+			<div side='right' id='divider'></div>
+			<section id='right-pane' style='width: 480px;'>
+				<div id='top-bar'>
+					<span class='active' onclick='show_tab(event,"output")'>Output</span><span onclick='show_tab(event,"help")'>Help</span><span onclick='var e=document.createElement("script");e.src="tutorial/tutorial.js";document.head.appendChild(e);event.target.setAttribute("onclick","show_tab(event,\"tutorial\")");event.target.click()'>Tutorial</span>
+				</div>
+				<div id='right-pane-container'>
+					<div id='output'></div>
+					<div id='help' style='display: none;'><iframe id='help-iframe' src='reference/index.html'></iframe></div>
+					<div id='tutorial' style='display: none'></div>
+				</div>
+			</section>
+		</div>
 	</body>
 </html>
